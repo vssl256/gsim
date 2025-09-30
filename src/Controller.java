@@ -6,11 +6,13 @@ import java.util.stream.Collectors;
 import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.Group;
 import javafx.scene.control.Button;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.Slider;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.effect.Glow;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -28,7 +30,7 @@ public class Controller {
     @FXML private Button speedReset;
 
     private final double G = 10;
-    private double dt = 0.01;
+    private double dt = 0.001;
     private final double epsilon = 0.1;
     private final int maxPoints = 2000;
     private double speedFactor = 1;
@@ -46,10 +48,10 @@ public class Controller {
     @FXML
     private void initialize() {
         timer.start();
-        addBody(0, 0, 33300, 20, Color.ORANGERED, Color.RED);
-        addBody(100, 0, 100, 1, Color.DEEPSKYBLUE, Color.LIME);
-        addBody(104, 0, 0.001, 0.3, Color.GRAY, Color.YELLOW);
-        addBody(200, 0, 320, 5, Color.ORANGE, Color.VIOLET);
+        addBody(0, 0, 333000, 20, Color.ORANGERED, Color.RED);
+        addBody(100, 0, 400, 1, Color.DEEPSKYBLUE, Color.LIME);
+        addBody(103, 0, 0.001, 0.3, Color.GRAY, Color.YELLOW);
+        addBody(400, 0, 1000, 5, Color.ORANGE, Color.VIOLET);
         addBody(30, 0, 3, 1, Color.DARKGRAY, Color.GOLD);
         Platform.runLater(() -> {
             simPane.widthProperty().addListener((obs, oldVal, newVal) -> centerSystem());
@@ -61,6 +63,19 @@ public class Controller {
             bodies.get(2).setOrbit(bodies.get(1), G, 0);
             bodies.get(4).setOrbit(bodies.get(0), G, 0.1);
         });
+        Group orbitLayer = new Group();
+        Group bodyLayer = new Group();
+        simPane.getChildren().addAll(orbitLayer, bodyLayer);
+
+        for (int i = 0; i < bodyShapes.size(); i++) {
+            orbitLayer.getChildren().add(orbits.get(i));
+            bodyLayer.getChildren().add(bodyShapes.get(i));
+
+        }
+
+        addButton.setOnAction(event -> {
+
+        });
         speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             speedFactor = newVal.doubleValue();
         });
@@ -69,6 +84,10 @@ public class Controller {
             bodies.get(i).reset();
             trails.get(i).getPoints().clear();
         }
+        simPane.setTranslateX(0);
+        simPane.setTranslateY(0);
+        simPane.setScaleX(1);
+        simPane.setScaleY(1);
         });
         speedReset.setOnAction(event -> {
             speedSlider.valueProperty().set(1.0);
@@ -94,10 +113,21 @@ public class Controller {
             mouseX = event.getSceneX();
             mouseY = event.getSceneY();
         });
-        simPane.setOnScroll(event -> {
-            double zoomFactor = (event.getDeltaY() > 0) ? 1.1 : 0.9;
-            simPane.setScaleX(simPane.getScaleX() * zoomFactor);
-            simPane.setScaleY(simPane.getScaleY() * zoomFactor);
+        simPane.addEventFilter(ScrollEvent.SCROLL, event -> {
+            double zoomFactor = 1.05;
+            
+            double deltaY = event.getDeltaY();
+            if (Math.abs(event.getTextDeltaY()) > 0.0) {
+                deltaY = event.getTextDeltaY();
+            }
+            if (deltaY > 0) {
+                simPane.setScaleX(simPane.getScaleX() * zoomFactor);
+                simPane.setScaleY(simPane.getScaleY() * zoomFactor);
+            } else if (deltaY < 0) {
+                simPane.setScaleX(simPane.getScaleX() / zoomFactor);
+                simPane.setScaleY(simPane.getScaleY() / zoomFactor);
+            }
+            event.consume();
         });
     }
 
@@ -132,6 +162,10 @@ public class Controller {
             Body body = bodies.get(i);
             body.x += dx;
             body.y += dy;
+            body.x0 = body.x;
+            body.y0 = body.y;
+            body.vx0 = body.vx;
+            body.vy0 = body.vy;
             trails.get(i).getPoints().clear();
         }
     }
@@ -177,7 +211,8 @@ public class Controller {
                 }
                 case 2: {
                     trails.get(i).getPoints().clear();
-                    drawOrbit(body, bodies.get(0), orbits.get(i));
+                    if (i != 2) drawOrbit(body, bodies.get(0), orbits.get(i));
+                    else drawOrbit(body, bodies.get(1), orbits.get(i));
                 }
             }
                     
@@ -271,9 +306,9 @@ public class Controller {
     double vxAxis = -uy;
     double vyAxis = ux;
 
-    double[] points = new double[2 * 180];
-    for (int k = 0; k < 180; k++) {
-        double theta = 2 * Math.PI * k / 180;
+    double[] points = new double[2 * 1800];
+    for (int k = 0; k < 1800; k++) {
+        double theta = 2 * Math.PI * k / 1800;
         double r_orb = (a * (1 - e * e)) / (1 + e * Math.cos(theta));
 
         double x_orb = r_orb * Math.cos(theta);
