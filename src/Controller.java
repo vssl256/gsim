@@ -1,21 +1,19 @@
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.Slider;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.effect.Glow;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.scene.shape.Polyline;
 import javafx.scene.text.Text;
 
@@ -26,82 +24,122 @@ public class Controller {
     @FXML private Text posText;
     @FXML private Pane simPane;
     @FXML private Slider speedSlider;
-    @FXML private ToggleGroup group1;
-    @FXML private Button speedReset;
-
-    private final double G = 10;
-    private double dt = 0.001;
-    private final double epsilon = 0.1;
-    private final int maxPoints = 2000;
     private double speedFactor = 1;
-    private Glow starGlow = new Glow(0.45);
+    @FXML private ToggleGroup group1;
     private int orbitDisplayMode = 1;
+    @FXML private Button speedReset;
+    private Group simGroup;
 
-    private double mouseX;
-    private double mouseY;
+    private ContextMenu contextMenu = new ContextMenu();
+    private double mouseX, mouseY;
+    private double x, y;
 
-    private List<Body> bodies = new ArrayList<>();
-    private List<Circle> bodyShapes = new ArrayList<>();
-    private List<Polyline> trails = new ArrayList<>();
-    private List<Polyline> orbits = new ArrayList<>();
+    private Physics physics;
+    private Graphics graphics;
+    private Simulation simulation;
+
+    private double G = Physics.getG();
+
+    public int getOrbitDisplayMode() { return orbitDisplayMode; }
+
+    private AnimationTimer timer;
     
     @FXML
     private void initialize() {
-        timer.start();
-        addBody(0, 0, 333000, 20, Color.ORANGERED, Color.RED);
-        addBody(100, 0, 400, 1, Color.DEEPSKYBLUE, Color.LIME);
-        addBody(103, 0, 0.001, 0.3, Color.GRAY, Color.YELLOW);
-        addBody(400, 0, 1000, 5, Color.ORANGE, Color.VIOLET);
-        addBody(30, 0, 3, 1, Color.DARKGRAY, Color.GOLD);
-        Platform.runLater(() -> {
-            simPane.widthProperty().addListener((obs, oldVal, newVal) -> centerSystem());
-            simPane.heightProperty().addListener((obs, oldVal, newVal) -> centerSystem());
-            centerSystem();
-            for (int i = 1; i < bodies.size(); i++) {
-                bodies.get(i).setOrbit(bodies.get(0), G, 0);
-            }
-            bodies.get(2).setOrbit(bodies.get(1), G, 0);
-            bodies.get(4).setOrbit(bodies.get(0), G, 0.1);
+        initSimulation();
+        initUIControls();
+        initMouseHandlers();
+        initTimer();
+    }
+
+    public void initSimulation() {
+        simulation = new Simulation();
+        physics = new Physics(simulation);
+
+        simulation.addBody(0, 0, 333000, 20, Color.ORANGERED);
+        simulation.addBody(100, 0, 400, 1, Color.DEEPSKYBLUE);
+        simulation.addBody(103, 0, 0.001, 0.3, Color.GRAY);
+        simulation.addBody(400, 0, 1000, 5, Color.ORANGE);
+        simulation.addBody(30, 0, 3, 1, Color.DARKGRAY);
+
+        simGroup = new Group();
+        simPane.getChildren().add(simGroup);
+
+        graphics = new Graphics(simulation, simGroup);
+        graphics.init();
+        
+        Platform.runLater(this::setupInitialOrbits);
+    }
+
+    public void setupInitialOrbits() {
+        List<Body> bodies = simulation.getBodies();
+        centerSystem();
+        bodies.get(1).setOrbit(bodies.get(0), G, 0);
+        bodies.get(2).setOrbit(bodies.get(1), G, 0);
+        bodies.get(3).setOrbit(bodies.get(0), G, 0);
+        bodies.get(4).setOrbit(bodies.get(0), G, 0.1);
+        simPane.widthProperty().addListener((obs, oldVal, newVal) -> centerSystem());
+        simPane.heightProperty().addListener((obs, oldVal, newVal) -> centerSystem());
+    }
+
+    public void initContextMenu() {
+        MenuItem itemAdd = new MenuItem("Add");
+        itemAdd.setOnAction(event -> {
+            addBody();
         });
-        Group orbitLayer = new Group();
-        Group bodyLayer = new Group();
-        simPane.getChildren().addAll(orbitLayer, bodyLayer);
-
-        for (int i = 0; i < bodyShapes.size(); i++) {
-            orbitLayer.getChildren().add(orbits.get(i));
-            bodyLayer.getChildren().add(bodyShapes.get(i));
-
-        }
-
-        addButton.setOnAction(event -> {
-
+        contextMenu.getItems().add(itemAdd);
+        simPane.setOnContextMenuRequested(event -> {
+            contextMenu.show(simPane, event.getScreenX(), event.getScreenY());
         });
-        speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-            speedFactor = newVal.doubleValue();
+    }
+
+    public void addBody() {
+        simulation.addBody(x, y, 5000, 3, Color.GOLDENROD);
+        graphics.addBodyShape(simulation.getBodies().get(simulation.getBodies().size() - 1));
+        simulation.getBodies().get(simulation.getBodies().size() - 1).setOrbit(simulation.getBodies().get(0), G, 0);
+        graphics.initBodies();
+    }
+
+    public void initUIControls() {
+        resetButton.setOnAction(event -> resetSimulation());
+        speedReset.setOnAction(event -> speedSlider.valueProperty().set(1.0));
+        speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> speedFactor = newVal.doubleValue());
+        addButton.setOnAction(event -> {});
+        group1.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
+            RadioButton selected = (RadioButton) newToggle;
+            orbitDisplayMode = "Orbits".equals(selected.getText()) ? 2 : 1;
         });
-        resetButton.setOnAction(event -> {
+        initContextMenu();
+    }
+
+    public void resetSimulation() {
+        List<Body> bodies = simulation.getBodies();
+        List<Polyline> trails = graphics.getTrails();
+
         for (int i = 0; i < bodies.size(); i++) {
             bodies.get(i).reset();
             trails.get(i).getPoints().clear();
         }
+
+        resetCam();
+    }
+
+    public void resetCam() {
         simPane.setTranslateX(0);
         simPane.setTranslateY(0);
         simPane.setScaleX(1);
         simPane.setScaleY(1);
-        });
-        speedReset.setOnAction(event -> {
-            speedSlider.valueProperty().set(1.0);
-        });
-        group1.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
-            RadioButton selected = (RadioButton) newToggle;
-            switch (selected.getText()) {
-                case "Trails": orbitDisplayMode = 1; break;
-                case "Orbits": orbitDisplayMode = 2; break;
-            }
-        });
+    }
+
+    public void initMouseHandlers() {
         simPane.setOnMousePressed(event -> {
-            mouseX = event.getSceneX();
-            mouseY = event.getSceneY();
+            contextMenu.hide();
+            mouseX = event.getX();
+            mouseY = event.getY();
+
+            Point2D simCoords = simGroup.sceneToLocal(event.getSceneX(), event.getSceneY());
+            x = simCoords.getX();
+            y = simCoords.getY();
         });
         simPane.setOnMouseDragged(event -> {
             double dx = event.getSceneX() - mouseX;
@@ -113,263 +151,48 @@ public class Controller {
             mouseX = event.getSceneX();
             mouseY = event.getSceneY();
         });
-        simPane.addEventFilter(ScrollEvent.SCROLL, event -> {
-            double zoomFactor = 1.05;
-            
-            double deltaY = event.getDeltaY();
-            if (Math.abs(event.getTextDeltaY()) > 0.0) {
-                deltaY = event.getTextDeltaY();
-            }
-            if (deltaY > 0) {
-                simPane.setScaleX(simPane.getScaleX() * zoomFactor);
-                simPane.setScaleY(simPane.getScaleY() * zoomFactor);
-            } else if (deltaY < 0) {
-                simPane.setScaleX(simPane.getScaleX() / zoomFactor);
-                simPane.setScaleY(simPane.getScaleY() / zoomFactor);
-            }
-            event.consume();
-        });
+
+        simPane.addEventFilter(ScrollEvent.SCROLL, event -> zoomHandler(event));
     }
 
-    public void updateCamera() {
-        double totalMass = 0;
-        double cmX = 0;
-        double cmY = 0;
-
-        for (Body body : bodies) {
-            totalMass += body.mass;
-            cmX += body.mass * body.x;
-            cmY += body.mass * body.y;
+    public void zoomHandler(ScrollEvent event) {
+        double zoomFactor = 1.05;
+        double deltaY = event.getDeltaY();
+        if (Math.abs(event.getTextDeltaY()) > 0.0) {
+            deltaY = event.getTextDeltaY();
         }
-
-        cmX /= totalMass;
-        cmY /= totalMass;
-
-        double cx = simPane.getWidth() / 2;
-        double cy = simPane.getHeight() / 2;
-
-        simPane.setTranslateX(cx - cmX);
-        simPane.setTranslateY(cy - cmY);
+        if (deltaY > 0) {
+            simPane.setScaleX(simPane.getScaleX() * zoomFactor);
+            simPane.setScaleY(simPane.getScaleY() * zoomFactor);
+        } else if (deltaY < 0) {
+            simPane.setScaleX(simPane.getScaleX() / zoomFactor);
+            simPane.setScaleY(simPane.getScaleY() / zoomFactor);
+        }
+        event.consume();
     }
 
     public void centerSystem() {
         double cx = simPane.getWidth() / 2;
         double cy = simPane.getHeight() / 2;
-        Body main = bodies.get(0);
-        double dx = cx - main.x;
-        double dy = cy - main.y;
-        for (int i = 0; i < bodies.size(); i++) {
-            Body body = bodies.get(i);
-            body.x += dx;
-            body.y += dy;
-            body.x0 = body.x;
-            body.y0 = body.y;
-            body.vx0 = body.vx;
-            body.vy0 = body.vy;
-            trails.get(i).getPoints().clear();
-        }
+
+        Body main = simulation.getBodies().get(0);
+
+        simGroup.setTranslateX(cx - main.x);
+        simGroup.setTranslateY(cy - main.y);
     }
-
-
-    public void updatePhysics() {
-        for (int i = 0; i < bodies.size(); i++) {
-            Body body = bodies.get(i);
-            double ax = 0;
-            double ay = 0;
-            for (int j = 0; j < bodies.size(); j++) {
-                if (i == j) continue;
-                Body other = bodies.get(j);
-                double dx = other.x - body.x;
-                double dy = other.y - body.y;
-                double r = Math.sqrt(dx*dx + dy*dy);
-                double F = G * body.mass * other.mass / (r*r + epsilon*epsilon);
-                ax += F * dx / (r * body.mass);
-                ay += F * dy / (r * body.mass);
-            }
-            body.vx += ax * dt;
-            body.vy += ay * dt;
-            body.x += body.vx * dt;
-            body.y += body.vy * dt;
-        }
-    }
-
-    public void updateGraphics() {
-        for (int i = 0; i < bodies.size(); i++) {
-            Circle bodyShape = bodyShapes.get(i);
-            Body body = bodies.get(i);
-            bodyShape.setCenterX(body.x);
-            bodyShape.setCenterY(body.y);
-            switch (orbitDisplayMode) {
-                case 1: {
-                    orbits.get(i).setVisible(false);
-
-                    trails.get(i).getPoints().addAll(body.x, body.y);
-                    if (trails.get(i).getPoints().size() > maxPoints) {
-                        trails.get(i).getPoints().remove(0, 2);
-                    }
-                    break;
+private boolean isTimer = false;
+    private void initTimer() {
+        timer = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+            posText.setText(Double.toString(Math.floor(speedFactor)));
+                for (int i = 0; i < speedFactor; i++) {
+                    physics.step();
                 }
-                case 2: {
-                    trails.get(i).getPoints().clear();
-                    if (i != 2) drawOrbit(body, bodies.get(0), orbits.get(i));
-                    else drawOrbit(body, bodies.get(1), orbits.get(i));
-                }
+                graphics.update(orbitDisplayMode);
             }
-                    
-            if (i == 0) bodyShape.setEffect(starGlow);
-        }
-    }
-
-    AnimationTimer timer = new AnimationTimer() {
-        @Override
-        public void handle(long now) {
-        posText.setText(Double.toString(Math.floor(speedFactor)));
-            for (int i = 0; i < speedFactor; i++) {
-                updatePhysics();
-                //updateCamera();
-            }
-            updateGraphics();
-        }
-    };
-
-    public void addBody(double x, double y, double mass, double radius, Color color, Color orbitColor) {
-        Body body = new Body(x, y, mass, radius);
-        bodies.add(body);
-
-        Circle bodyShape = new Circle(x, y, radius, color);
-        simPane.getChildren().add(bodyShape);
-        bodyShapes.add(bodyShape);
-        
-        Polyline trail = new Polyline();
-        trail.setStroke(orbitColor);
-        trail.setEffect(starGlow);
-        trail.setStrokeWidth(0.5);
-        trail.setOpacity(0.4);
-        trail.setFill(null);
-        simPane.getChildren().add(trail);
-        trails.add(trail);
-
-        Polyline orbitLine = new Polyline();
-        orbitLine.setStroke(orbitColor);
-        orbitLine.setStrokeWidth(0.5);
-        orbitLine.setOpacity(0.4);
-        orbitLine.setFill(null);
-        simPane.getChildren().add(orbitLine);
-        orbits.add(orbitLine);
-    }
-
-    private void drawOrbit(Body body, Body main, Polyline orbitLine) {
-    double rx = body.x - main.x;
-    double ry = body.y - main.y;
-    double vx = body.vx - main.vx;
-    double vy = body.vy - main.vy;
-
-    double r = Math.hypot(rx, ry);
-    if (r < 1e-6) {
-        orbitLine.setVisible(false);
-        return;
-    }
-
-    double mu = G * (main.mass + body.mass);
-
-    double v2 = vx * vx + vy * vy;
-    double energy = 0.5 * v2 - mu / r;
-
-    if (energy >= 0) {
-        orbitLine.setVisible(false); // не замкнутая орбита
-        return;
-    }
-
-    double a = -mu / (2.0 * energy);
-
-    double h = rx * vy - ry * vx;
-
-    double e2 = 1.0 + (2.0 * energy * h * h) / (mu * mu);
-    if (e2 < 0) e2 = 0;
-    double e = Math.sqrt(e2);
-
-    // вектор эксцентриситета
-    double rDotV = rx * vx + ry * vy;
-    double ex = ((v2 - mu / r) * rx - rDotV * vx) / mu;
-    double ey = ((v2 - mu / r) * ry - rDotV * vy) / mu;
-    double emag = Math.hypot(ex, ey);
-
-    double ux, uy;
-    if (emag < 1e-9) {
-        ux = rx / r;
-        uy = ry / r;
-    } else {
-        ux = ex / emag;
-        uy = ey / emag;
-    }
-
-    double vxAxis = -uy;
-    double vyAxis = ux;
-
-    double[] points = new double[2 * 1800];
-    for (int k = 0; k < 1800; k++) {
-        double theta = 2 * Math.PI * k / 1800;
-        double r_orb = (a * (1 - e * e)) / (1 + e * Math.cos(theta));
-
-        double x_orb = r_orb * Math.cos(theta);
-        double y_orb = r_orb * Math.sin(theta);
-
-        double xr = x_orb * ux + y_orb * vxAxis;
-        double yr = x_orb * uy + y_orb * vyAxis;
-
-        points[2 * k] = main.x + xr;
-        points[2 * k + 1] = main.y + yr;
-    }
-    List<Double> list = Arrays.stream(points).boxed().collect(Collectors.toList());
-    orbitLine.getPoints().setAll(list);
-    orbitLine.setVisible(true);
-}
-
-
-    public void centerSystemDepr() {
-        double totalMass = 0;
-        double cmX = 0;
-        double cmY = 0;
-
-        // 1. считаем массу и центр масс
-        for (Body b : bodies) {
-            totalMass += b.mass;
-            cmX += b.mass * b.x;
-            cmY += b.mass * b.y;
-        }
-        cmX /= totalMass;
-        cmY /= totalMass;
-
-        // 2. смещаем все тела так, чтобы ЦМ оказался в (0,0)
-        for (Body b : bodies) {
-            b.x -= cmX;
-            b.y -= cmY;
-        }
-
-        // 3. сдвигаем в центр Pane
-        double offsetX = simPane.getWidth() / 2;
-        double offsetY = simPane.getHeight() / 2;
-        for (Body b : bodies) {
-            b.x += offsetX;
-            b.y += offsetY;
-        }
-
-        // 4. считаем суммарный импульс
-        double px = 0;
-        double py = 0;
-        for (Body b : bodies) {
-            px += b.mass * b.vx;
-            py += b.mass * b.vy;
-        }
-
-        // 5. скорость центра масс
-        double vcmX = px / totalMass;
-        double vcmY = py / totalMass;
-
-        // 6. вычитаем её из скоростей
-        for (Body b : bodies) {
-            b.vx -= vcmX;
-            b.vy -= vcmY;
-        }
+        };
+        isTimer = true;
+        if (isTimer) timer.start();
     }
 }

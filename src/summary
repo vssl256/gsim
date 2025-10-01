@@ -1,0 +1,412 @@
+public class App extends Application {
+    
+    public static void main(String[] args) throws Exception {
+        launch(args);
+    }
+    
+    @Override
+    public void start(Stage primaryStage) throws Exception {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("resources/main.fxml"));
+        Scene scene = new Scene(loader.load());
+        primaryStage.setScene(scene);
+        primaryStage.setTitle("Simple Gravity Simulator");
+        primaryStage.setFullScreenExitHint("");
+        scene.setOnKeyPressed(event -> {
+            switch (event.getCode()) {
+                case F: primaryStage.setFullScreen(!primaryStage.isFullScreen());
+                default: {}
+            }
+        });
+        primaryStage.show();
+    }
+}
+public class Body {
+    public double x, y;
+    public double vx, vy;
+    public double mass;
+    public double radius;
+    public double x0, y0;
+    public double vx0, vy0;
+    public double e;
+    public Color color;
+    
+    public Body(double x, double y, double mass, double radius, Color color) {
+        this.x = this.x0 = x;
+        this.y = this.y0 = y;
+        this.vx = this.vx0 = vx = 0;
+        this.vy = this.vy0 = vy = 0;
+        this.mass = mass;
+        this.radius = radius;
+        this.color = color;
+    }
+
+    public void reset() {
+        this.x = x0;
+        this.y = y0;
+        this.vx = vx0;
+        this.vy = vy0;
+    }
+
+    public void setOrbit(Body main, double G, double eccentricity) {
+        double dx = this.x - main.x;
+        double dy = this.y - main.y;
+        double r = Math.sqrt(dx*dx + dy*dy);
+        double vCircular = Math.sqrt(G * main.mass / r);
+        double v = vCircular * Math.sqrt((1 + eccentricity) / (1 - eccentricity));
+        this.vx = main.vx + v * dy / r;
+        this.vy = main.vy - v * dx / r;
+        this.vx0 = this.vx;
+        this.vy0 = this.vy;
+        this.e = eccentricity;
+    }
+}
+public class Controller {
+
+    @FXML private Button resetButton;
+    @FXML private Button addButton;
+    @FXML private Text posText;
+    @FXML private Pane simPane;
+    @FXML private Slider speedSlider;
+    @FXML private ToggleGroup group1;
+    @FXML private Button speedReset;
+
+    private ContextMenu contextMenu = new ContextMenu();
+
+    private Physics physics;
+    private Graphics graphics;
+    private Simulation simulation;
+
+    private double G = Physics.getG();
+    private double speedFactor = 1;
+
+    private int orbitDisplayMode = 1;
+    public int getOrbitDisplayMode() { return orbitDisplayMode; }
+    private List<Body> bodies = new ArrayList<>();
+    private double mouseX;
+    private double mouseY;
+    
+    @FXML
+    private void initialize() {
+        MenuItem item1 = new MenuItem("test");
+        contextMenu.getItems().add(item1);
+        simPane.setOnContextMenuRequested(event -> {
+            contextMenu.show(simPane, event.getScreenX(), event.getScreenY());
+        });
+        simulation = new Simulation();
+        physics = new Physics(simulation);
+        simulation.addBody(0, 0, 333000, 20, Color.ORANGERED);
+        simulation.addBody(100, 0, 400, 1, Color.DEEPSKYBLUE);
+        simulation.addBody(103, 0, 0.001, 0.3, Color.GRAY);
+        simulation.addBody(400, 0, 1000, 5, Color.ORANGE);
+        simulation.addBody(30, 0, 3, 1, Color.DARKGRAY);
+
+        bodies = simulation.getBodies();
+        graphics = new Graphics(simulation, simPane);
+        List<Polyline> trails = graphics.getTrails();
+        graphics.init();
+        timer.start();
+        Platform.runLater(() -> {
+            simPane.widthProperty().addListener((obs, oldVal, newVal) -> centerSystem());
+            simPane.heightProperty().addListener((obs, oldVal, newVal) -> centerSystem());
+            centerSystem();
+            for (int i = 1; i < bodies.size(); i++) {
+                bodies.get(i).setOrbit(bodies.get(0), G, 0);
+            }
+            bodies.get(2).setOrbit(bodies.get(1), G, 0);
+            bodies.get(4).setOrbit(bodies.get(0), G, 0.1);
+        });
+
+
+        addButton.setOnAction(event -> {
+
+        });
+        speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            speedFactor = newVal.doubleValue();
+        });
+        resetButton.setOnAction(event -> {
+        for (int i = 0; i < bodies.size(); i++) {
+            bodies.get(i).reset();
+            trails.get(i).getPoints().clear();
+        }
+        simPane.setTranslateX(0);
+        simPane.setTranslateY(0);
+        simPane.setScaleX(1);
+        simPane.setScaleY(1);
+        });
+        speedReset.setOnAction(event -> {
+            speedSlider.valueProperty().set(1.0);
+        });
+        group1.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
+            RadioButton selected = (RadioButton) newToggle;
+            switch (selected.getText()) {
+                case "Trails": orbitDisplayMode = 1; break;
+                case "Orbits": orbitDisplayMode = 2; break;
+            }
+        });
+        simPane.setOnMousePressed(event -> {
+            contextMenu.hide();
+            mouseX = event.getSceneX();
+            mouseY = event.getSceneY();
+        });
+        simPane.setOnMouseDragged(event -> {
+            double dx = event.getSceneX() - mouseX;
+            double dy = event.getSceneY() - mouseY;
+
+            simPane.setTranslateX(simPane.getTranslateX() + dx);
+            simPane.setTranslateY(simPane.getTranslateY() + dy);
+
+            mouseX = event.getSceneX();
+            mouseY = event.getSceneY();
+        });
+        simPane.addEventFilter(ScrollEvent.SCROLL, event -> {
+            double zoomFactor = 1.05;
+            
+            double deltaY = event.getDeltaY();
+            if (Math.abs(event.getTextDeltaY()) > 0.0) {
+                deltaY = event.getTextDeltaY();
+            }
+            if (deltaY > 0) {
+                simPane.setScaleX(simPane.getScaleX() * zoomFactor);
+                simPane.setScaleY(simPane.getScaleY() * zoomFactor);
+            } else if (deltaY < 0) {
+                simPane.setScaleX(simPane.getScaleX() / zoomFactor);
+                simPane.setScaleY(simPane.getScaleY() / zoomFactor);
+            }
+            event.consume();
+        });
+    }
+
+    public void centerSystem() {
+        List<Body> bodies = simulation.getBodies();
+        List<Polyline> trails = graphics.getTrails();
+        double cx = simPane.getWidth() / 2;
+        double cy = simPane.getHeight() / 2;
+        Body main = bodies.get(0);
+        double dx = cx - main.x;
+        double dy = cy - main.y;
+        for (int i = 0; i < bodies.size(); i++) {
+            Body body = bodies.get(i);
+            body.x += dx;
+            body.y += dy;
+            body.x0 = body.x;
+            body.y0 = body.y;
+            body.vx0 = body.vx;
+            body.vy0 = body.vy;
+            trails.get(i).getPoints().clear();
+        }
+    }
+
+    AnimationTimer timer = new AnimationTimer() {
+        @Override
+        public void handle(long now) {
+        posText.setText(Double.toString(Math.floor(speedFactor)));
+            for (int i = 0; i < speedFactor; i++) {
+                physics.step();
+            }
+            graphics.update(orbitDisplayMode);
+        }
+    };
+}
+public class Graphics {
+    private Simulation simulation;
+    private final Pane simPane;
+
+    List<Body> bodies = new ArrayList<>();
+    List<Circle> bodyShapes = new ArrayList<>();
+    public Graphics(Simulation simulation, Pane simPane) {
+        this.simulation = simulation;
+        this.simPane = simPane;
+        this.bodies = simulation.getBodies();
+        this.bodyShapes = simulation.getBodyShapes();
+    }
+
+    private double lineWidth = 0.25;
+    private double lineOpacity = 0.4;
+
+    private int maxPoints = 2000;
+    private Glow starGlow = new Glow(0.45);
+
+    private List<Polyline> trails = new ArrayList<>();
+    public List<Polyline> getTrails() { return trails; }
+
+    private List<Polyline> orbits = new ArrayList<>();
+    public List<Polyline> getOrbits() { return orbits; }
+    
+
+    public void update(int orbitDisplayMode) {
+
+        for (int i = 0; i < bodies.size(); i++) {
+            Circle bodyShape = bodyShapes.get(i);
+            Body body = bodies.get(i);
+
+            bodyShape.setCenterX(body.x);
+            bodyShape.setCenterY(body.y);
+
+            switch (orbitDisplayMode) {
+                case 1: {
+                    orbits.get(i).setVisible(false);
+
+                    trails.get(i).getPoints().addAll(body.x, body.y);
+                    if (trails.get(i).getPoints().size() > maxPoints) {
+                        trails.get(i).getPoints().remove(0, 2);
+                    }
+                    break;
+                }
+                case 2: {
+                    trails.get(i).getPoints().clear();
+                    if (i != 2) drawOrbit(body, bodies.get(0), orbits.get(i));
+                    else drawOrbit(body, bodies.get(1), orbits.get(i));
+                }
+            }
+                    
+            if (i == 0) bodyShape.setEffect(starGlow);
+        }
+    }
+    public void init() {
+        initOrbits();
+        initBodies();
+    }
+    public void initBodies() {
+        bodyShapes = simulation.getBodyShapes();
+        for (Circle bodyShape : bodyShapes) {
+            simPane.getChildren().add(bodyShape);
+        }
+
+    }
+    public void initOrbits() {
+        for (int i = 0; i < bodies.size(); i++) {
+            Body body = bodies.get(i);
+            Color color = body.color;
+
+            Polyline trail = new Polyline();
+            trail.setStroke(color);
+            trail.setStrokeWidth(lineWidth);
+            trail.setOpacity(lineOpacity);
+            trails.add(trail);
+
+            Polyline orbit = new Polyline();
+            orbit.setStroke(color);
+            orbit.setStrokeWidth(lineWidth);
+            orbit.setOpacity(lineOpacity);
+            orbits.add(orbit);
+
+            simPane.getChildren().addAll(trail, orbit);
+        }
+    }
+
+    private void drawOrbit(Body body, Body main, Polyline orbitLine) {
+        double rx = body.x - main.x;
+        double ry = body.y - main.y;
+        double vx = body.vx - main.vx;
+        double vy = body.vy - main.vy;
+
+        double r = Math.hypot(rx, ry);
+        if (r < 1e-6) {
+            orbitLine.setVisible(false);
+            return;
+        }
+        double mu = Physics.getG() * (main.mass + body.mass);
+
+        double v2 = vx * vx + vy * vy;
+        double energy = 0.5 * v2 - mu / r;
+
+        if (energy >= 0) {
+            orbitLine.setVisible(false); // не замкнутая орбита
+            return;
+        }
+
+        double a = -mu / (2.0 * energy);
+
+        double h = rx * vy - ry * vx;
+
+        double e2 = 1.0 + (2.0 * energy * h * h) / (mu * mu);
+        if (e2 < 0) e2 = 0;
+        double e = Math.sqrt(e2);
+
+        // вектор эксцентриситета
+        double rDotV = rx * vx + ry * vy;
+        double ex = ((v2 - mu / r) * rx - rDotV * vx) / mu;
+        double ey = ((v2 - mu / r) * ry - rDotV * vy) / mu;
+        double emag = Math.hypot(ex, ey);
+
+        double ux, uy;
+        if (emag < 1e-9) {
+            ux = rx / r;
+            uy = ry / r;
+        } else {
+            ux = ex / emag;
+            uy = ey / emag;
+        }
+
+        double vxAxis = -uy;
+        double vyAxis = ux;
+
+        double[] points = new double[2 * 1800];
+        for (int k = 0; k < 1800; k++) {
+            double theta = 2 * Math.PI * k / 1800;
+            double r_orb = (a * (1 - e * e)) / (1 + e * Math.cos(theta));
+
+            double x_orb = r_orb * Math.cos(theta);
+            double y_orb = r_orb * Math.sin(theta);
+
+            double xr = x_orb * ux + y_orb * vxAxis;
+            double yr = x_orb * uy + y_orb * vyAxis;
+
+            points[2 * k] = main.x + xr;
+            points[2 * k + 1] = main.y + yr;
+        }
+        List<Double> list = Arrays.stream(points).boxed().collect(Collectors.toList());
+        orbitLine.getPoints().setAll(list);
+        orbitLine.setVisible(true);
+    }
+}
+public class Physics {
+    private static final double G = 10;
+    public static double getG() { return G; }
+
+    private double dt = 0.001;
+    private final double epsilon = 0.1;
+
+    private List<Body> bodies;
+
+    public Physics(Simulation simulation) {
+        this.bodies = simulation.getBodies();
+    }
+
+    public void step() {
+        for (int i = 0; i < bodies.size(); i++) {
+            Body body = bodies.get(i);
+            double ax = 0;
+            double ay = 0;
+            for (int j = 0; j < bodies.size(); j++) {
+                if (i == j) continue;
+                Body other = bodies.get(j);
+                double dx = other.x - body.x;
+                double dy = other.y - body.y;
+                double r = Math.sqrt(dx*dx + dy*dy);
+                double F = G * body.mass * other.mass / (r*r + epsilon*epsilon);
+                ax += F * dx / (r * body.mass);
+                ay += F * dy / (r * body.mass);
+            }
+            body.vx += ax * dt;
+            body.vy += ay * dt;
+            body.x += body.vx * dt;
+            body.y += body.vy * dt;
+        }
+    }
+}
+public class Simulation {
+    private List<Body> bodies = new ArrayList<>();
+    public List<Body> getBodies() { return bodies; }
+
+    private List<Circle> bodyShapes = new ArrayList<>();
+    public List<Circle> getBodyShapes() { return bodyShapes; }
+
+    public void addBody(double x, double y, double mass, double radius, Color color) {
+        Body body = new Body(x, y, mass, radius, color);
+        bodies.add(body);
+        Circle bodyShape = new Circle(x, y, radius, color);
+        bodyShapes.add(bodyShape);
+    }
+    
+}
