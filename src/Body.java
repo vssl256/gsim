@@ -9,6 +9,9 @@ public class Body {
     public double vx0, vy0;
     public double e;
     public Color color;
+    public Atmosphere atmosphere;
+    public boolean hasAtmosphere = false;
+    public boolean initialized = false;
     
     public Body(double x, double y, double mass, double radius, Color color) {
         this.x = this.x0 = x;
@@ -27,7 +30,13 @@ public class Body {
         this.vy = vy0;
     }
 
-    public void setOrbit(Body main, double G, double eccentricity) {
+    public void setAtmosphere(Atmosphere atmosphere) {
+        this.atmosphere = atmosphere;
+        this.hasAtmosphere = true;
+    }
+
+    public void setOrbit(Body main, double eccentricity) {
+        double G = Physics.getG();
         double dx = this.x - main.x;
         double dy = this.y - main.y;
         double r = Math.sqrt(dx*dx + dy*dy);
@@ -38,5 +47,9 @@ public class Body {
         this.vx0 = this.vx;
         this.vy0 = this.vy;
         this.e = eccentricity;
+    }
+
+    public void init() {
+        this.initialized = true;
     }
 }

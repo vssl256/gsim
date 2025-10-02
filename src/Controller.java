@@ -3,22 +3,28 @@ import java.util.List;
 import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.Slider;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Polyline;
 import javafx.scene.text.Text;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 public class Controller {
-
     @FXML private Button resetButton;
     @FXML private Button addButton;
     @FXML private Text posText;
@@ -38,8 +44,6 @@ public class Controller {
     private Graphics graphics;
     private Simulation simulation;
 
-    private double G = Physics.getG();
-
     public int getOrbitDisplayMode() { return orbitDisplayMode; }
 
     private AnimationTimer timer;
@@ -55,12 +59,14 @@ public class Controller {
     public void initSimulation() {
         simulation = new Simulation();
         physics = new Physics(simulation);
-
         simulation.addBody(0, 0, 333000, 20, Color.ORANGERED);
         simulation.addBody(100, 0, 400, 1, Color.DEEPSKYBLUE);
         simulation.addBody(103, 0, 0.001, 0.3, Color.GRAY);
         simulation.addBody(400, 0, 1000, 5, Color.ORANGE);
         simulation.addBody(30, 0, 3, 1, Color.DARKGRAY);
+
+        List<Body> bodies = simulation.getBodies();
+        bodies.get(1).setAtmosphere(new Atmosphere(0.2, 0.2, Color.LIGHTBLUE));
 
         simGroup = new Group();
         simPane.getChildren().add(simGroup);
@@ -74,18 +80,18 @@ public class Controller {
     public void setupInitialOrbits() {
         List<Body> bodies = simulation.getBodies();
         centerSystem();
-        bodies.get(1).setOrbit(bodies.get(0), G, 0);
-        bodies.get(2).setOrbit(bodies.get(1), G, 0);
-        bodies.get(3).setOrbit(bodies.get(0), G, 0);
-        bodies.get(4).setOrbit(bodies.get(0), G, 0.1);
+        bodies.get(1).setOrbit(bodies.get(0), 0);
+        bodies.get(2).setOrbit(bodies.get(1), 0);
+        bodies.get(3).setOrbit(bodies.get(0), 0);
+        bodies.get(4).setOrbit(bodies.get(0), 0.1);
         simPane.widthProperty().addListener((obs, oldVal, newVal) -> centerSystem());
         simPane.heightProperty().addListener((obs, oldVal, newVal) -> centerSystem());
     }
 
     public void initContextMenu() {
-        MenuItem itemAdd = new MenuItem("Add");
+        MenuItem itemAdd = new MenuItem("Create new body");
         itemAdd.setOnAction(event -> {
-            addBody();
+            createBodyWindow();
         });
         contextMenu.getItems().add(itemAdd);
         simPane.setOnContextMenuRequested(event -> {
@@ -93,11 +99,25 @@ public class Controller {
         });
     }
 
+    public void createBodyWindow() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("addBody.fxml"));
+            Parent root = loader.load();
+            CreateBodyController createBodyController = loader.getController();
+            Stage stage = new Stage();
+            createBodyController.set(simulation, graphics, x, y, stage);
+            stage.initStyle(StageStyle.UTILITY);
+            stage.setOpacity(0.9);
+            stage.setTitle("Create new body");
+            stage.initOwner(simPane.getScene().getWindow());
+            stage.setScene(new Scene(root));
+            stage.showAndWait();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public void addBody() {
-        simulation.addBody(x, y, 5000, 3, Color.GOLDENROD);
-        graphics.addBodyShape(simulation.getBodies().get(simulation.getBodies().size() - 1));
-        simulation.getBodies().get(simulation.getBodies().size() - 1).setOrbit(simulation.getBodies().get(0), G, 0);
-        graphics.initBodies();
     }
 
     public void initUIControls() {
@@ -120,7 +140,6 @@ public class Controller {
             bodies.get(i).reset();
             trails.get(i).getPoints().clear();
         }
-
         resetCam();
     }
 
@@ -134,8 +153,8 @@ public class Controller {
     public void initMouseHandlers() {
         simPane.setOnMousePressed(event -> {
             contextMenu.hide();
-            mouseX = event.getX();
-            mouseY = event.getY();
+            mouseX = event.getSceneX();
+            mouseY = event.getSceneY();
 
             Point2D simCoords = simGroup.sceneToLocal(event.getSceneX(), event.getSceneY());
             x = simCoords.getX();
@@ -180,7 +199,7 @@ public class Controller {
         simGroup.setTranslateX(cx - main.x);
         simGroup.setTranslateY(cy - main.y);
     }
-private boolean isTimer = false;
+
     private void initTimer() {
         timer = new AnimationTimer() {
             @Override
@@ -192,7 +211,6 @@ private boolean isTimer = false;
                 graphics.update(orbitDisplayMode);
             }
         };
-        isTimer = true;
-        if (isTimer) timer.start();
+        timer.start();
     }
 }

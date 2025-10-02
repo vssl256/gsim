@@ -13,13 +13,9 @@ public class Graphics {
     private Simulation simulation;
     private final Group simGroup;
 
-    List<Body> bodies = new ArrayList<>();
-    List<Circle> bodyShapes = new ArrayList<>();
     public Graphics(Simulation simulation, Group simGroup) {
         this.simulation = simulation;
         this.simGroup = simGroup;
-        this.bodies = simulation.getBodies();
-        this.bodyShapes = simulation.getBodyShapes();
     }
 
     private double lineWidth = 0.25;
@@ -33,10 +29,10 @@ public class Graphics {
 
     private List<Polyline> orbits = new ArrayList<>();
     public List<Polyline> getOrbits() { return orbits; }
-    
 
     public void update(int orbitDisplayMode) {
         List<Body> bodies = simulation.getBodies();
+        List<Circle> bodyShapes = simulation.getBodyShapes();
         for (int i = 0; i < bodies.size(); i++) {
             Circle bodyShape = bodyShapes.get(i);
             Body body = bodies.get(i);
@@ -60,12 +56,12 @@ public class Graphics {
                     else drawOrbit(body, bodies.get(1), orbits.get(i));
                 }
             }
-                    
             if (i == 0) bodyShape.setEffect(starGlow);
         }
     }
 
     public void addBodyShape(Body body) {
+        List<Circle> bodyShapes = simulation.getBodyShapes();
         Circle bodyShape = new Circle(body.x, body.y, body.radius, body.color);
         bodyShapes.add(bodyShape);
 
@@ -89,15 +85,32 @@ public class Graphics {
         initBodies();
     }
     public void initBodies() {
-        bodyShapes = simulation.getBodyShapes();
-        for (Circle bodyShape : bodyShapes) {
-            if (!simGroup.getChildren().contains(bodyShape)) simGroup.getChildren().add(bodyShape);
+        List<Circle> bodyShapes = simulation.getBodyShapes();
+        List<Body> bodies = simulation.getBodies();
+        for (int i = 0; i < bodies.size(); i++) {
+            if (!simGroup.getChildren().contains(bodyShapes.get(i))) {
+                if (bodies.get(i).hasAtmosphere) initAtmosphere(bodies.get(i));
+                simGroup.getChildren().add(bodyShapes.get(i));
+            }
         }
+    }
+    public void initAtmosphere(Body body) {
+        List<Circle> bodyShapes = simulation.getBodyShapes();
+        List<Body> bodies = simulation.getBodies();
 
+        Atmosphere atmosphere = body.atmosphere;
+        Circle atmShape = new Circle(body.radius + atmosphere.radius, atmosphere.color);
+        atmShape.setOpacity(atmosphere.opacity);
+        atmShape.centerXProperty().bind(bodyShapes.get(bodies.indexOf(body)).centerXProperty());
+        atmShape.centerYProperty().bind(bodyShapes.get(bodies.indexOf(body)).centerYProperty());
+        simGroup.getChildren().add(atmShape);
     }
     public void initOrbits() {
+        List<Body> bodies = simulation.getBodies();
         for (int i = 0; i < bodies.size(); i++) {
             Body body = bodies.get(i);
+            if (body.initialized) continue;
+            body.init();
             Color color = body.color;
 
             Polyline trail = new Polyline();
