@@ -11,8 +11,8 @@ public class Simulation {
     private List<Circle> bodyShapes = new ArrayList<>();
     public List<Circle> getBodyShapes() { return bodyShapes; }
 
-    public void addBody(double x, double y, double mass, double radius, Color color) {
-        Body body = new Body(x, y, mass, radius, color);
+    public void addBody(String name, double x, double y, double mass, double radius, Color color) {
+        Body body = new Body(name, x, y, mass, radius, color);
         bodies.add(body);
         Circle bodyShape = new Circle(x, y, radius, color);
         bodyShapes.add(bodyShape);

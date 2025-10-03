@@ -7,10 +7,9 @@
 <?import java.lang.*?>
 <?import javafx.scene.layout.*?>
 
-
 <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="255.0" prefWidth="300.0" style="-fx-background-color: BLACK;" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="CreateBodyController">
    <children>
-      <HBox prefHeight="200.0" prefWidth="150.0">
+      <HBox prefHeight="200.0" prefWidth="150.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
             <VBox prefHeight="134.0" prefWidth="150.0" spacing="10.0">
                <children>
@@ -85,7 +84,7 @@
             </VBox>
          </children>
       </HBox>
-      <HBox layoutX="150.0" prefHeight="200.0" prefWidth="150.0">
+      <HBox layoutX="150.0" prefHeight="200.0" prefWidth="150.0" AnchorPane.bottomAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
             <VBox prefHeight="134.0" prefWidth="150.0" spacing="10.0">
                <children>
@@ -93,6 +92,8 @@
                   <Text fill="WHITE" fontSmoothingType="LCD" strokeType="OUTSIDE" strokeWidth="0.0" text="Eccentricity" />
                   <Text fill="WHITE" fontSmoothingType="LCD" strokeType="OUTSIDE" strokeWidth="0.0" text="X" />
                   <Text fill="WHITE" fontSmoothingType="LCD" strokeType="OUTSIDE" strokeWidth="0.0" text="Y" />
+                  <Text fill="WHITE" fontSmoothingType="LCD" strokeType="OUTSIDE" strokeWidth="0.0" text="Parent body" />
+                  <ComboBox fx:id="comboBox" prefHeight="25.0" prefWidth="116.0" />
                </children>
                <opaqueInsets>
                   <Insets />
@@ -108,18 +109,24 @@
                         <Font size="9.0" />
                      </font>
                      <VBox.margin>
-                        <Insets top="27.0" />
+                        <Insets left="-8.0" top="27.0" />
                      </VBox.margin>
                   </TextField>
                   <TextField fx:id="xField">
                      <font>
                         <Font size="9.0" />
                      </font>
+                     <VBox.margin>
+                        <Insets left="-8.0" />
+                     </VBox.margin>
                   </TextField>
                   <TextField fx:id="yField">
                      <font>
                         <Font size="9.0" />
                      </font>
+                     <VBox.margin>
+                        <Insets left="-8.0" />
+                     </VBox.margin>
                   </TextField>
                </children>
                <padding>

@@ -13,6 +13,7 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.Slider;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Pane;
@@ -28,11 +29,12 @@ public class Controller {
     @FXML private Text posText;
     @FXML private Pane simPane;
     @FXML private Slider speedSlider;
-    private double speedFactor = 1;
+    private int speedFactor = 1;
     @FXML private ToggleGroup group1;
     private int orbitDisplayMode = 1;
     @FXML private Button speedReset;
     private Group simGroup;
+    @FXML private TextField spdField;
 
     private ContextMenu contextMenu = new ContextMenu();
     private double mouseX, mouseY;
@@ -57,15 +59,15 @@ public class Controller {
     public void initSimulation() {
         simulation = new Simulation();
         physics = new Physics(simulation);
-        simulation.addBody(0, 0, 333000, 20, Color.ORANGERED);
-        simulation.addBody(100, 0, 400, 1, Color.DEEPSKYBLUE);
-        simulation.addBody(103, 0, 0.001, 0.3, Color.GRAY);
-        simulation.addBody(400, 0, 1000, 5, Color.ORANGE);
-        simulation.addBody(30, 0, 3, 1, Color.DARKGRAY);
+        simulation.addBody("Sun", 0, 0, 333000, 20, Color.ORANGERED);
+        simulation.addBody("Earth", 100, 0, 400, 1, Color.DEEPSKYBLUE);
+        simulation.addBody("Moon", 103, 0, 0.001, 0.3, Color.GRAY);
+        simulation.addBody("Jupiter", 400, 0, 1000, 5, Color.ORANGE);
+        simulation.addBody("Mercury", 30, 0, 3, 1, Color.DARKGRAY);
 
         List<Body> bodies = simulation.getBodies();
         bodies.get(1).setAtmosphere(new Atmosphere(0.2, 0.2, Color.LIGHTBLUE));
-
+        bodies.get(2).addParent(bodies.get(1));
         simGroup = new Group();
         simPane.getChildren().add(simGroup);
 
@@ -93,7 +95,7 @@ public class Controller {
         });
         contextMenu.getItems().add(itemAdd);
         simPane.setOnContextMenuRequested(event -> {
-            contextMenu.show(simPane, event.getScreenX(), event.getScreenY());
+            contextMenu.show(simGroup, event.getScreenX(), event.getScreenY());
         });
     }
 
@@ -104,6 +106,7 @@ public class Controller {
             CreateBodyController createBodyController = loader.getController();
             Stage stage = new Stage();
             createBodyController.set(simulation, graphics, x, y, stage);
+            createBodyController.loadBodies();
             stage.initStyle(StageStyle.UTILITY);
             stage.setOpacity(0.9);
             stage.setTitle("Create new body");
@@ -120,14 +123,21 @@ public class Controller {
 
     public void initUIControls() {
         resetButton.setOnAction(event -> resetSimulation());
-        speedReset.setOnAction(event -> speedSlider.valueProperty().set(1.0));
-        speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> speedFactor = newVal.doubleValue());
+        speedReset.setOnAction(event -> {
+            speedFactor = 1;
+            speedSlider.valueProperty().set(1);
+        });
+        speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> speedFactor = newVal.intValue());
         addButton.setOnAction(event -> {});
         group1.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
             RadioButton selected = (RadioButton) newToggle;
             orbitDisplayMode = "Orbits".equals(selected.getText()) ? 2 : 1;
         });
         initContextMenu();
+        spdField.setOnKeyTyped(event -> {
+            if (!spdField.getText().isEmpty()) speedFactor = Integer.valueOf(spdField.getText());
+            else speedFactor = 0;
+        });
     }
 
     public void resetSimulation() {
@@ -153,18 +163,18 @@ public class Controller {
             contextMenu.hide();
             mouseX = event.getSceneX();
             mouseY = event.getSceneY();
-
             Point2D simCoords = simGroup.sceneToLocal(event.getSceneX(), event.getSceneY());
             x = simCoords.getX();
             y = simCoords.getY();
         });
         simPane.setOnMouseDragged(event -> {
-            double dx = event.getSceneX() - mouseX;
-            double dy = event.getSceneY() - mouseY;
+            if (event.isPrimaryButtonDown()) {
+                double dx = event.getSceneX() - mouseX;
+                double dy = event.getSceneY() - mouseY;
 
-            simPane.setTranslateX(simPane.getTranslateX() + dx);
-            simPane.setTranslateY(simPane.getTranslateY() + dy);
-
+                simPane.setTranslateX(simPane.getTranslateX() + dx);
+                simPane.setTranslateY(simPane.getTranslateY() + dy);
+            }
             mouseX = event.getSceneX();
             mouseY = event.getSceneY();
         });
@@ -202,7 +212,7 @@ public class Controller {
         timer = new AnimationTimer() {
             @Override
             public void handle(long now) {
-            posText.setText(Double.toString(Math.floor(speedFactor)));
+            posText.setText(Integer.toString(speedFactor));
                 for (int i = 0; i < speedFactor; i++) {
                     physics.step();
                 }

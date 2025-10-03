@@ -39,7 +39,7 @@ public class Graphics {
 
             bodyShape.setCenterX(body.x);
             bodyShape.setCenterY(body.y);
-
+            
             switch (orbitDisplayMode) {
                 case 1: {
                     orbits.get(i).setVisible(false);
@@ -52,8 +52,8 @@ public class Graphics {
                 }
                 case 2: {
                     trails.get(i).getPoints().clear();
-                    if (i != 2) drawOrbit(body, bodies.get(0), orbits.get(i));
-                    else drawOrbit(body, bodies.get(1), orbits.get(i));
+                    if (body.main == null) drawOrbit(body, bodies.get(0), orbits.get(i));
+                    else drawOrbit(body, body.main, orbits.get(i));
                 }
             }
             if (i == 0) bodyShape.setEffect(starGlow);

@@ -4,7 +4,7 @@ public class Physics {
     private static final double G = 10;
     public static double getG() { return G; }
 
-    private double dt = 0.001;
+    private double dt = 0.0001;
     private final double epsilon = 0.1;
 
     private List<Body> bodies;

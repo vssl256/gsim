@@ -1,6 +1,7 @@
 import javafx.scene.paint.Color;
 
 public class Body {
+    public String name;
     public double x, y;
     public double vx, vy;
     public double mass;
@@ -12,8 +13,10 @@ public class Body {
     public Atmosphere atmosphere;
     public boolean hasAtmosphere = false;
     public boolean initialized = false;
+    public Body main;
     
-    public Body(double x, double y, double mass, double radius, Color color) {
+    public Body(String name, double x, double y, double mass, double radius, Color color) {
+        this.name = name;
         this.x = this.x0 = x;
         this.y = this.y0 = y;
         this.vx = this.vx0 = vx = 0;
@@ -21,6 +24,10 @@ public class Body {
         this.mass = mass;
         this.radius = radius;
         this.color = color;
+    }
+
+    public void addParent(Body body) {
+        this.main = body;
     }
 
     public void reset() {
