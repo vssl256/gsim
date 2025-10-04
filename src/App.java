@@ -12,7 +12,7 @@ public class App extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         System.out.println(System.getProperty("java.version"));
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("main.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("resources/main.fxml"));
         Scene scene = new Scene(loader.load());
         primaryStage.setScene(scene);
         primaryStage.setTitle("Simple Gravity Simulator");

@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import javafx.scene.Group;
 import javafx.scene.effect.Glow;
+import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Polyline;
@@ -12,13 +13,15 @@ import javafx.scene.shape.Polyline;
 public class Graphics {
     private Simulation simulation;
     private final Group simGroup;
-
-    public Graphics(Simulation simulation, Group simGroup) {
+    private final Pane simPane;
+    
+    public Graphics(Simulation simulation, Group simGroup, Pane simPane) {
         this.simulation = simulation;
         this.simGroup = simGroup;
+        this.simPane = simPane;
     }
 
-    private double lineWidth = 0.25;
+    private double lineWidth = 1;
     private double lineOpacity = 0.4;
 
     private int maxPoints = 2000;
@@ -43,7 +46,7 @@ public class Graphics {
             switch (orbitDisplayMode) {
                 case 1: {
                     orbits.get(i).setVisible(false);
-
+                    trails.get(i).setStrokeWidth(lineWidth/simPane.getScaleX());
                     trails.get(i).getPoints().addAll(body.x, body.y);
                     if (trails.get(i).getPoints().size() > maxPoints) {
                         trails.get(i).getPoints().remove(0, 2);
@@ -52,6 +55,7 @@ public class Graphics {
                 }
                 case 2: {
                     trails.get(i).getPoints().clear();
+                    orbits.get(i).setStrokeWidth(lineWidth/simPane.getScaleX());
                     if (body.main == null) drawOrbit(body, bodies.get(0), orbits.get(i));
                     else drawOrbit(body, body.main, orbits.get(i));
                 }
@@ -59,27 +63,6 @@ public class Graphics {
             if (i == 0) bodyShape.setEffect(starGlow);
         }
     }
-
-    public void addBodyShape(Body body) {
-        List<Circle> bodyShapes = simulation.getBodyShapes();
-        Circle bodyShape = new Circle(body.x, body.y, body.radius, body.color);
-        bodyShapes.add(bodyShape);
-
-        Polyline trail = new Polyline();
-        trail.setStroke(body.color);
-        trail.setStrokeWidth(lineWidth);
-        trail.setOpacity(lineOpacity);
-        trails.add(trail);
-
-        Polyline orbit = new Polyline();
-        orbit.setStroke(body.color);
-        orbit.setStrokeWidth(lineWidth);
-        orbit.setOpacity(lineOpacity);
-        orbits.add(orbit);
-
-        simGroup.getChildren().addAll(bodyShape, trail, orbit);
-    }
-
     public void init() {
         initOrbits();
         initBodies();
@@ -100,6 +83,7 @@ public class Graphics {
 
         Atmosphere atmosphere = body.atmosphere;
         Circle atmShape = new Circle(body.radius + atmosphere.radius, atmosphere.color);
+        atmShape.setCache(false);
         atmShape.setOpacity(atmosphere.opacity);
         atmShape.centerXProperty().bind(bodyShapes.get(bodies.indexOf(body)).centerXProperty());
         atmShape.centerYProperty().bind(bodyShapes.get(bodies.indexOf(body)).centerYProperty());
@@ -111,18 +95,20 @@ public class Graphics {
             Body body = bodies.get(i);
             if (body.initialized) continue;
             body.init();
-            Color color = body.color;
-
+            Color color = body.getColor();
+            
             Polyline trail = new Polyline();
             trail.setStroke(color);
             trail.setStrokeWidth(lineWidth);
             trail.setOpacity(lineOpacity);
+            trail.setCache(false);
             trails.add(trail);
 
             Polyline orbit = new Polyline();
             orbit.setStroke(color);
             orbit.setStrokeWidth(lineWidth);
             orbit.setOpacity(lineOpacity);
+            orbit.setCache(false);
             orbits.add(orbit);
 
             simGroup.getChildren().addAll(trail, orbit);

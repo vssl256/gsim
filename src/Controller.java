@@ -1,3 +1,4 @@
+import java.text.DecimalFormat;
 import java.util.List;
 
 import javafx.animation.AnimationTimer;
@@ -35,10 +36,13 @@ public class Controller {
     @FXML private Button speedReset;
     private Group simGroup;
     @FXML private TextField spdField;
+    @FXML private Text fpsText;
+    @FXML private Text xyText;
 
     private ContextMenu contextMenu = new ContextMenu();
     private double mouseX, mouseY;
     private double x, y;
+    private double defZoom = 8e-8;
 
     private Physics physics;
     private Graphics graphics;
@@ -54,24 +58,30 @@ public class Controller {
         initUIControls();
         initMouseHandlers();
         initTimer();
+        //simulation.readJSON("test.json");
+        //graphics.init();
     }
 
     public void initSimulation() {
         simulation = new Simulation();
         physics = new Physics(simulation);
-        simulation.addBody("Sun", 0, 0, 333000, 20, Color.ORANGERED);
-        simulation.addBody("Earth", 100, 0, 400, 1, Color.DEEPSKYBLUE);
-        simulation.addBody("Moon", 103, 0, 0.001, 0.3, Color.GRAY);
-        simulation.addBody("Jupiter", 400, 0, 1000, 5, Color.ORANGE);
-        simulation.addBody("Mercury", 30, 0, 3, 1, Color.DARKGRAY);
-
+        
+        //simulation.addBody("Sun", 0, 0, 6e24, 20, "ORANGERED");
+        //simulation.addBody("Earth", 100, 0, 400, 1, "DEEPSKYBLUE");
+        //simulation.addBody("Moon", 103, 0, 0.001, 0.3, "GRAY");
+        //simulation.addBody("Jupiter", 400, 0, 1000, 5, "ORANGE");
+        //simulation.addBody("Mercury", 30, 0, 3, 1, "DARKGRAY");
+        //simulation.readJSON("test.json");
+        simulation.addBody("Sun", 0, 0, 1.989e30, 6.957e8, "YELLOW");
+        simulation.addBody("Earth", 1.471e11, 0, 6e24, 6.378e6, "BLUE");
+        simulation.addBody("Moon", 1.471e11+3.636e8, 0, 7.36e22, 1.737e6, "GRAY");
         List<Body> bodies = simulation.getBodies();
-        bodies.get(1).setAtmosphere(new Atmosphere(0.2, 0.2, Color.LIGHTBLUE));
+        bodies.get(1).setAtmosphere(new Atmosphere(1e5, 0.2, Color.LIGHTBLUE));
         bodies.get(2).addParent(bodies.get(1));
         simGroup = new Group();
         simPane.getChildren().add(simGroup);
 
-        graphics = new Graphics(simulation, simGroup);
+        graphics = new Graphics(simulation, simGroup, simPane);
         graphics.init();
         
         Platform.runLater(this::setupInitialOrbits);
@@ -80,10 +90,11 @@ public class Controller {
     public void setupInitialOrbits() {
         List<Body> bodies = simulation.getBodies();
         centerSystem();
-        bodies.get(1).setOrbit(bodies.get(0), 0);
-        bodies.get(2).setOrbit(bodies.get(1), 0);
-        bodies.get(3).setOrbit(bodies.get(0), 0);
-        bodies.get(4).setOrbit(bodies.get(0), 0.1);
+        bodies.get(1).setOrbit(bodies.get(0), 0.0167);
+        bodies.get(2).setOrbit(bodies.get(1), 0.055);
+        //bodies.get(2).setOrbit(bodies.get(1), 0);
+        //bodies.get(3).setOrbit(bodies.get(0), 0);
+        //bodies.get(4).setOrbit(bodies.get(0), 0.1);
         simPane.widthProperty().addListener((obs, oldVal, newVal) -> centerSystem());
         simPane.heightProperty().addListener((obs, oldVal, newVal) -> centerSystem());
     }
@@ -101,7 +112,7 @@ public class Controller {
 
     public void createBodyWindow() {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("addBody.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("resources/addBody.fxml"));
             Parent root = loader.load();
             CreateBodyController createBodyController = loader.getController();
             Stage stage = new Stage();
@@ -122,6 +133,8 @@ public class Controller {
     }
 
     public void initUIControls() {
+        simPane.setScaleX(defZoom);
+        simPane.setScaleY(defZoom);
         resetButton.setOnAction(event -> resetSimulation());
         speedReset.setOnAction(event -> {
             speedFactor = 1;
@@ -154,8 +167,8 @@ public class Controller {
     public void resetCam() {
         simPane.setTranslateX(0);
         simPane.setTranslateY(0);
-        simPane.setScaleX(1);
-        simPane.setScaleY(1);
+        simPane.setScaleX(defZoom);
+        simPane.setScaleY(defZoom);
     }
 
     public void initMouseHandlers() {
@@ -183,7 +196,7 @@ public class Controller {
     }
 
     public void zoomHandler(ScrollEvent event) {
-        double zoomFactor = 1.05;
+        double zoomFactor = 1.15;
         double deltaY = event.getDeltaY();
         if (Math.abs(event.getTextDeltaY()) > 0.0) {
             deltaY = event.getTextDeltaY();
@@ -208,15 +221,30 @@ public class Controller {
         simGroup.setTranslateY(cy - main.y);
     }
 
+    public void follow() {
+        List<Body> bodies = simulation.getBodies();
+        Body body = bodies.get(1);
+        double scale = simPane.getScaleX();
+        simPane.setTranslateX(-body.x * scale);
+        simPane.setTranslateY(-body.y * scale);
+    }
+    private long realTimeNS;
     private void initTimer() {
         timer = new AnimationTimer() {
             @Override
             public void handle(long now) {
             posText.setText(Integer.toString(speedFactor));
-                for (int i = 0; i < speedFactor; i++) {
+                realTimeNS = System.nanoTime();
+                for (int i = 0; i < speedFactor/100; i++) {
                     physics.step();
                 }
+                follow();
                 graphics.update(orbitDisplayMode);
+                realTimeNS = System.nanoTime() - realTimeNS;
+                double fps = 1e9/realTimeNS;
+                fpsText.setText("FPS: " + (int)fps);
+                DecimalFormat df = new DecimalFormat("0.00E0");
+                xyText.setText(df.format(x) + " :X"+"\n"+df.format(y) + " :Y");
             }
         };
         timer.start();

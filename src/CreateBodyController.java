@@ -85,7 +85,7 @@ public class CreateBodyController {
         if (!nameField.getText().isEmpty()) name = nameField.getText();
         double mass = Double.valueOf(massField.getText());
         double radius = Double.valueOf(radiusField.getText());
-        Color color = Color.valueOf(colorField.getText());
+        String color = colorField.getText();
 
         if (hasAtmosphere) {
             atmRadius = Double.valueOf(atmHeightField.getText());

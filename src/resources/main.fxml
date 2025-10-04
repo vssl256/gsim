@@ -30,7 +30,9 @@
          </children>
       </HBox>
       <Text fx:id="posText" fill="WHITE" fontSmoothingType="LCD" layoutX="296.0" layoutY="479.0" strokeType="OUTSIDE" strokeWidth="0.0" text="spd" AnchorPane.bottomAnchor="18.0" AnchorPane.rightAnchor="434.787109375" />
-      <Button fx:id="speedReset" mnemonicParsing="false" prefHeight="25.0" prefWidth="35.0" text="1x" textOverrun="LEADING_WORD_ELLIPSIS" AnchorPane.bottomAnchor="14.0" AnchorPane.rightAnchor="471.0" />
-      <TextField fx:id="spdField" layoutX="203.0" layoutY="462.0" prefHeight="25.0" prefWidth="35.0" />
+      <Button fx:id="speedReset" mnemonicParsing="false" prefHeight="25.0" prefWidth="35.0" text="1x" textOverrun="LEADING_WORD_ELLIPSIS" AnchorPane.bottomAnchor="14.0" AnchorPane.rightAnchor="480.0" />
+      <TextField fx:id="spdField" layoutX="203.0" layoutY="462.0" prefHeight="25.0" prefWidth="35.0" AnchorPane.bottomAnchor="13.0" AnchorPane.rightAnchor="520.0" />
+      <Text fx:id="fpsText" fill="WHITE" fontSmoothingType="LCD" strokeType="OUTSIDE" strokeWidth="0.0" text="FPS: " AnchorPane.leftAnchor="3.0" AnchorPane.topAnchor="3.0" />
+      <Text fill="WHITE" fontSmoothingType="LCD" strokeType="OUTSIDE" strokeWidth="0.0" text="X" AnchorPane.rightAnchor="3.0" AnchorPane.topAnchor="3.0" fx:id="xyText" />
    </children>
 </AnchorPane>

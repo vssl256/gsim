@@ -9,13 +9,14 @@ public class Body {
     public double x0, y0;
     public double vx0, vy0;
     public double e;
-    public Color color;
+    public String color;
+    public Color getColor() { return Color.valueOf(color); }
     public Atmosphere atmosphere;
     public boolean hasAtmosphere = false;
     public boolean initialized = false;
     public Body main;
     
-    public Body(String name, double x, double y, double mass, double radius, Color color) {
+    public Body(String name, double x, double y, double mass, double radius, String color) {
         this.name = name;
         this.x = this.x0 = x;
         this.y = this.y0 = y;
@@ -25,6 +26,7 @@ public class Body {
         this.radius = radius;
         this.color = color;
     }
+    public Body() {}
 
     public void addParent(Body body) {
         this.main = body;
