@@ -42,22 +42,27 @@ public class Graphics {
 
             bodyShape.setCenterX(body.x);
             bodyShape.setCenterY(body.y);
-            
+
+            Body parent = (body.main != null) ? body.main : bodies.get(0);
             switch (orbitDisplayMode) {
                 case 1: {
                     orbits.get(i).setVisible(false);
+
                     trails.get(i).setStrokeWidth(lineWidth/simPane.getScaleX());
-                    trails.get(i).getPoints().addAll(body.x, body.y);
+                    double rx = body.x - parent.x;
+                    double ry = body.y - parent.y;
+                    trails.get(i).getPoints().addAll(rx, ry);
                     if (trails.get(i).getPoints().size() > maxPoints) {
                         trails.get(i).getPoints().remove(0, 2);
                     }
+                    trails.get(i).setTranslateX(parent.x);
+                    trails.get(i).setTranslateY(parent.y);
                     break;
                 }
                 case 2: {
                     trails.get(i).getPoints().clear();
                     orbits.get(i).setStrokeWidth(lineWidth/simPane.getScaleX());
-                    if (body.main == null) drawOrbit(body, bodies.get(0), orbits.get(i));
-                    else drawOrbit(body, body.main, orbits.get(i));
+                    drawOrbit(body, parent, orbits.get(i));
                 }
             }
             if (i == 0) bodyShape.setEffect(starGlow);

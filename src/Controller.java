@@ -26,11 +26,11 @@ import javafx.stage.StageStyle;
 
 public class Controller {
     @FXML private Button resetButton;
-    @FXML private Button addButton;
+    @FXML private Button followButton;
     @FXML private Text posText;
     @FXML private Pane simPane;
     @FXML private Slider speedSlider;
-    private int speedFactor = 1;
+    private long speedFactor = 1;
     @FXML private ToggleGroup group1;
     private int orbitDisplayMode = 1;
     @FXML private Button speedReset;
@@ -43,17 +43,17 @@ public class Controller {
     private double mouseX, mouseY;
     private double x, y;
     private double defZoom = 8e-8;
+    private boolean follow = false;
 
-    private Physics physics;
     private Graphics graphics;
     private Simulation simulation;
-
-    public int getOrbitDisplayMode() { return orbitDisplayMode; }
+    private Physics physics;
 
     private AnimationTimer timer;
     
     @FXML
     private void initialize() {
+        
         initSimulation();
         initUIControls();
         initMouseHandlers();
@@ -75,8 +75,10 @@ public class Controller {
         simulation.addBody("Sun", 0, 0, 1.989e30, 6.957e8, "YELLOW");
         simulation.addBody("Earth", 1.471e11, 0, 6e24, 6.378e6, "BLUE");
         simulation.addBody("Moon", 1.471e11+3.636e8, 0, 7.36e22, 1.737e6, "GRAY");
+        simulation.addBody("Jupiter", 7.415e11, 0, 1.898e27, 6.991e7, "ORANGE");
         List<Body> bodies = simulation.getBodies();
         bodies.get(1).setAtmosphere(new Atmosphere(1e5, 0.2, Color.LIGHTBLUE));
+        //bodies.get(1).addParent(bodies.get(0));
         bodies.get(2).addParent(bodies.get(1));
         simGroup = new Group();
         simPane.getChildren().add(simGroup);
@@ -86,12 +88,12 @@ public class Controller {
         
         Platform.runLater(this::setupInitialOrbits);
     }
-
     public void setupInitialOrbits() {
         List<Body> bodies = simulation.getBodies();
         centerSystem();
         bodies.get(1).setOrbit(bodies.get(0), 0.0167);
         bodies.get(2).setOrbit(bodies.get(1), 0.055);
+        bodies.get(3).setOrbit(bodies.get(0), 0.048);
         //bodies.get(2).setOrbit(bodies.get(1), 0);
         //bodies.get(3).setOrbit(bodies.get(0), 0);
         //bodies.get(4).setOrbit(bodies.get(0), 0.1);
@@ -141,7 +143,10 @@ public class Controller {
             speedSlider.valueProperty().set(1);
         });
         speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> speedFactor = newVal.intValue());
-        addButton.setOnAction(event -> {});
+        followButton.setOnAction(event -> {
+            follow = !follow;
+            followButton.setText((follow) ? "Unfollow" : "Follow");
+        });
         group1.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
             RadioButton selected = (RadioButton) newToggle;
             orbitDisplayMode = "Orbits".equals(selected.getText()) ? 2 : 1;
@@ -233,16 +238,16 @@ public class Controller {
         timer = new AnimationTimer() {
             @Override
             public void handle(long now) {
-            posText.setText(Integer.toString(speedFactor));
+                posText.setText(Long.toString(speedFactor));
                 realTimeNS = System.nanoTime();
                 for (int i = 0; i < speedFactor/100; i++) {
                     physics.step();
                 }
-                follow();
                 graphics.update(orbitDisplayMode);
                 realTimeNS = System.nanoTime() - realTimeNS;
                 double fps = 1e9/realTimeNS;
                 fpsText.setText("FPS: " + (int)fps);
+                if (follow) follow();
                 DecimalFormat df = new DecimalFormat("0.00E0");
                 xyText.setText(df.format(x) + " :X"+"\n"+df.format(y) + " :Y");
             }
