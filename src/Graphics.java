@@ -14,11 +14,13 @@ public class Graphics {
     private Simulation simulation;
     private final Group simGroup;
     private final Pane simPane;
+    private final Controller controller;
     
-    public Graphics(Simulation simulation, Group simGroup, Pane simPane) {
+    public Graphics(Simulation simulation, Group simGroup, Pane simPane, Controller controller) {
         this.simulation = simulation;
         this.simGroup = simGroup;
         this.simPane = simPane;
+        this.controller = controller;
     }
 
     private double lineWidth = 1;
@@ -33,6 +35,9 @@ public class Graphics {
     private List<Polyline> orbits = new ArrayList<>();
     public List<Polyline> getOrbits() { return orbits; }
 
+    private double dist = 0;
+    public double getDist() { return dist; }
+
     public void update(int orbitDisplayMode) {
         List<Body> bodies = simulation.getBodies();
         List<Circle> bodyShapes = simulation.getBodyShapes();
@@ -42,15 +47,24 @@ public class Graphics {
 
             bodyShape.setCenterX(body.x);
             bodyShape.setCenterY(body.y);
+            System.out.println(body.name);
+            if (controller.getSelectedBody() != null) System.out.println(controller.getSelectedBody().name);
+            if (body == controller.getSelectedBody()) {
+                System.out.println("init");
+                Body main = body.main;
+                if (main != null) dist = Math.sqrt(Math.pow((body.x-main.x), 2) + Math.pow((body.y - main.y), 2));
+            }
 
             Body parent = (body.main != null) ? body.main : bodies.get(0);
             switch (orbitDisplayMode) {
                 case 1: {
                     orbits.get(i).setVisible(false);
-
-                    trails.get(i).setStrokeWidth(lineWidth/simPane.getScaleX());
+                    double scale = simPane.getScaleX();
+                    trails.get(i).setStrokeWidth(lineWidth/scale);
                     double rx = body.x - parent.x;
                     double ry = body.y - parent.y;
+                    double tx = (body.x - rx) * scale;
+                    double ty = (body.y - ry) * scale;
                     trails.get(i).getPoints().addAll(rx, ry);
                     if (trails.get(i).getPoints().size() > maxPoints) {
                         trails.get(i).getPoints().remove(0, 2);

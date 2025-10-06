@@ -4,7 +4,7 @@ public class Physics {
     private static final double G = 6.6743e-11;
     public static double getG() { return G; }
 
-    private double dt = 0.25;
+    private double dt = 2.5;
     private final double epsilon = 0.1;
 
     private List<Body> bodies;
@@ -24,7 +24,7 @@ public class Physics {
                 double dx = other.x - body.x;
                 double dy = other.y - body.y;
                 double r = Math.sqrt(dx*dx + dy*dy);
-                double F = G * body.mass * other.mass / (r*r + epsilon*epsilon);
+                double F = (G * body.mass * other.mass / (r*r + epsilon*epsilon));// * (1 + (0.00000001/r));
                 ax += F * dx / (r * body.mass);
                 ay += F * dy / (r * body.mass);
             }

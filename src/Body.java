@@ -49,10 +49,11 @@ public class Body {
         double dx = this.x - main.x;
         double dy = this.y - main.y;
         double r = Math.sqrt(dx*dx + dy*dy);
-        double vCircular = Math.sqrt(G * main.mass / r);
-        double v = vCircular * Math.sqrt((1 + eccentricity) / (1 - eccentricity));
-        this.vx = main.vx + v * dy / r;
-        this.vy = main.vy - v * dx / r;
+        //double vCircular = Math.sqrt(G * main.mass / r);
+        //double v = vCircular * Math.sqrt((1.0 + eccentricity) / (1.0 - eccentricity));
+        double v2 = Math.sqrt(G * main.mass * (1.0 + eccentricity) / r);
+        this.vx = main.vx + v2 * dy / r;
+        this.vy = main.vy - v2 * dx / r;
         this.vx0 = this.vx;
         this.vy0 = this.vy;
         this.e = eccentricity;

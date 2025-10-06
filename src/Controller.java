@@ -48,7 +48,8 @@ public class Controller {
     private Graphics graphics;
     private Simulation simulation;
     private Physics physics;
-
+    private Body selectedBody;
+    public Body getSelectedBody() { return selectedBody; }
     private AnimationTimer timer;
     
     @FXML
@@ -76,14 +77,18 @@ public class Controller {
         simulation.addBody("Earth", 1.471e11, 0, 6e24, 6.378e6, "BLUE");
         simulation.addBody("Moon", 1.471e11+3.636e8, 0, 7.36e22, 1.737e6, "GRAY");
         simulation.addBody("Jupiter", 7.415e11, 0, 1.898e27, 6.991e7, "ORANGE");
+        simulation.addBody("Mercury", 4.6e10, 0, 3.301e23, 2.439e6, "WHITE");
         List<Body> bodies = simulation.getBodies();
         bodies.get(1).setAtmosphere(new Atmosphere(1e5, 0.2, Color.LIGHTBLUE));
         //bodies.get(1).addParent(bodies.get(0));
         bodies.get(2).addParent(bodies.get(1));
+        bodies.get(1).addParent(bodies.get(0));
+        bodies.get(3).addParent(bodies.get(0));
+        bodies.get(4).addParent(bodies.get(0));
         simGroup = new Group();
         simPane.getChildren().add(simGroup);
 
-        graphics = new Graphics(simulation, simGroup, simPane);
+        graphics = new Graphics(simulation, simGroup, simPane, this);
         graphics.init();
         
         Platform.runLater(this::setupInitialOrbits);
@@ -94,6 +99,7 @@ public class Controller {
         bodies.get(1).setOrbit(bodies.get(0), 0.0167);
         bodies.get(2).setOrbit(bodies.get(1), 0.055);
         bodies.get(3).setOrbit(bodies.get(0), 0.048);
+        bodies.get(4).setOrbit(bodies.get(0), 0.206);
         //bodies.get(2).setOrbit(bodies.get(1), 0);
         //bodies.get(3).setOrbit(bodies.get(0), 0);
         //bodies.get(4).setOrbit(bodies.get(0), 0.1);
@@ -184,6 +190,14 @@ public class Controller {
             Point2D simCoords = simGroup.sceneToLocal(event.getSceneX(), event.getSceneY());
             x = simCoords.getX();
             y = simCoords.getY();
+            List<Body> bodies = simulation.getBodies();
+            for (Body body : bodies) {
+                Body main = body.main;
+                if (main == null) main = bodies.get(0);
+                if (Math.sqrt(Math.pow((body.x-x), 2) + Math.pow((body.y - y), 2))<body.radius*100) {
+                    selectedBody = body;
+                }
+            }
         });
         simPane.setOnMouseDragged(event -> {
             if (event.isPrimaryButtonDown()) {
@@ -226,9 +240,12 @@ public class Controller {
         simGroup.setTranslateY(cy - main.y);
     }
 
-    public void follow() {
+    public void follow(Body body) {
         List<Body> bodies = simulation.getBodies();
-        Body body = bodies.get(1);
+        if (body == null) {
+            body = bodies.get(0);
+            selectedBody = bodies.get(0);
+        }
         double scale = simPane.getScaleX();
         simPane.setTranslateX(-body.x * scale);
         simPane.setTranslateY(-body.y * scale);
@@ -247,9 +264,10 @@ public class Controller {
                 realTimeNS = System.nanoTime() - realTimeNS;
                 double fps = 1e9/realTimeNS;
                 fpsText.setText("FPS: " + (int)fps);
-                if (follow) follow();
+                if (follow) follow(selectedBody);
                 DecimalFormat df = new DecimalFormat("0.00E0");
-                xyText.setText(df.format(x) + " :X"+"\n"+df.format(y) + " :Y");
+                String selected = (selectedBody != null) ? selectedBody.name : "Nothing";
+                xyText.setText(df.format(x) + " :X"+"\n"+df.format(y) + " :Y" + "\n" + selected + " :Selected" + "\n" + graphics.getDist() + " :Distance");
             }
         };
         timer.start();
