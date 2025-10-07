@@ -24,6 +24,14 @@ public class Simulation {
         bodyShape.setCache(false);
         bodyShapes.add(bodyShape);
     }
+    public void addBody(String name, double x, double y, double mass, double radius, String color, Body main) {
+        Body body = new Body(name, x, y, mass, radius, color);
+        body.addParent(main);
+        bodies.add(body);
+        Circle bodyShape = new Circle(x, y, radius, body.getColor());
+        bodyShape.setCache(false);
+        bodyShapes.add(bodyShape);
+    }
     public void clearSimulation() {
         bodies.clear();
         bodyShapes.clear();
@@ -41,7 +49,7 @@ public class Simulation {
     }
     public void loadBodies() {
         for (Body body : loadedBodies) {
-            addBody(body.name, body.x, body.y, body.mass, body.radius, body.color);
+            addBody(body.name, body.x, body.y, body.mass, body.radius, body.color, body.main);
         }
     }
     public void saveJSON(String path) {

@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import javafx.scene.Group;
-import javafx.scene.effect.Glow;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -15,7 +14,6 @@ public class Graphics {
     private final Group simGroup;
     private final Pane simPane;
     private final Controller controller;
-    
     public Graphics(Simulation simulation, Group simGroup, Pane simPane, Controller controller) {
         this.simulation = simulation;
         this.simGroup = simGroup;
@@ -23,11 +21,9 @@ public class Graphics {
         this.controller = controller;
     }
 
-    private double lineWidth = 1;
-    private double lineOpacity = 0.4;
-
-    private int maxPoints = 2000;
-    private Glow starGlow = new Glow(0.45);
+    private double lineWidth = Config.getDouble("graphics.lineWidth");
+    private double lineOpacity = Config.getDouble("graphics.lineOpacity");
+    private int maxPoints = Config.getInt("graphics.maxPoints");
 
     private List<Polyline> trails = new ArrayList<>();
     public List<Polyline> getTrails() { return trails; }
@@ -41,20 +37,16 @@ public class Graphics {
     public void update(int orbitDisplayMode) {
         List<Body> bodies = simulation.getBodies();
         List<Circle> bodyShapes = simulation.getBodyShapes();
+
         for (int i = 0; i < bodies.size(); i++) {
             Circle bodyShape = bodyShapes.get(i);
             Body body = bodies.get(i);
-
             bodyShape.setCenterX(body.x);
             bodyShape.setCenterY(body.y);
-            System.out.println(body.name);
-            if (controller.getSelectedBody() != null) System.out.println(controller.getSelectedBody().name);
             if (body == controller.getSelectedBody()) {
-                System.out.println("init");
                 Body main = body.main;
                 if (main != null) dist = Math.sqrt(Math.pow((body.x-main.x), 2) + Math.pow((body.y - main.y), 2));
             }
-
             Body parent = (body.main != null) ? body.main : bodies.get(0);
             switch (orbitDisplayMode) {
                 case 1: {
@@ -79,7 +71,6 @@ public class Graphics {
                     drawOrbit(body, parent, orbits.get(i));
                 }
             }
-            if (i == 0) bodyShape.setEffect(starGlow);
         }
     }
     public void init() {
@@ -145,7 +136,7 @@ public class Graphics {
             orbitLine.setVisible(false);
             return;
         }
-        double mu = Physics.getG() * (main.mass + body.mass);
+        double mu = Config.getDouble("physics.G") * (main.mass + body.mass);
 
         double v2 = vx * vx + vy * vy;
         double energy = 0.5 * v2 - mu / r;

@@ -45,7 +45,7 @@ public class Body {
     }
 
     public void setOrbit(Body main, double eccentricity) {
-        double G = Physics.getG();
+        double G = Config.getDouble("physics.G");
         double dx = this.x - main.x;
         double dy = this.y - main.y;
         double r = Math.sqrt(dx*dx + dy*dy);

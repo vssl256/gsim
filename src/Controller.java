@@ -20,6 +20,7 @@ import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Polyline;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -31,6 +32,7 @@ public class Controller {
     @FXML private Pane simPane;
     @FXML private Slider speedSlider;
     private long speedFactor = 1;
+    public long getSpeedFactor() { return speedFactor; }
     @FXML private ToggleGroup group1;
     private int orbitDisplayMode = 1;
     @FXML private Button speedReset;
@@ -42,7 +44,7 @@ public class Controller {
     private ContextMenu contextMenu = new ContextMenu();
     private double mouseX, mouseY;
     private double x, y;
-    private double defZoom = 8e-8;
+    private double defScale = Config.getDouble("controller.defScale");
     private boolean follow = false;
 
     private Graphics graphics;
@@ -54,11 +56,12 @@ public class Controller {
     
     @FXML
     private void initialize() {
-        
+        long start = System.nanoTime();
         initSimulation();
         initUIControls();
         initMouseHandlers();
         initTimer();
+        System.out.println((System.nanoTime() - start)/1_000_000.0 + " ms");
         //simulation.readJSON("test.json");
         //graphics.init();
     }
@@ -67,20 +70,15 @@ public class Controller {
         simulation = new Simulation();
         physics = new Physics(simulation);
         
-        //simulation.addBody("Sun", 0, 0, 6e24, 20, "ORANGERED");
-        //simulation.addBody("Earth", 100, 0, 400, 1, "DEEPSKYBLUE");
-        //simulation.addBody("Moon", 103, 0, 0.001, 0.3, "GRAY");
-        //simulation.addBody("Jupiter", 400, 0, 1000, 5, "ORANGE");
-        //simulation.addBody("Mercury", 30, 0, 3, 1, "DARKGRAY");
         //simulation.readJSON("test.json");
+        
         simulation.addBody("Sun", 0, 0, 1.989e30, 6.957e8, "YELLOW");
         simulation.addBody("Earth", 1.471e11, 0, 6e24, 6.378e6, "BLUE");
         simulation.addBody("Moon", 1.471e11+3.636e8, 0, 7.36e22, 1.737e6, "GRAY");
         simulation.addBody("Jupiter", 7.415e11, 0, 1.898e27, 6.991e7, "ORANGE");
-        simulation.addBody("Mercury", 4.6e10, 0, 3.301e23, 2.439e6, "WHITE");
+        simulation.addBody("Mercury", 4.6e10, 0, 3.301e23, 2.439e6, "DIMGRAY");
         List<Body> bodies = simulation.getBodies();
         bodies.get(1).setAtmosphere(new Atmosphere(1e5, 0.2, Color.LIGHTBLUE));
-        //bodies.get(1).addParent(bodies.get(0));
         bodies.get(2).addParent(bodies.get(1));
         bodies.get(1).addParent(bodies.get(0));
         bodies.get(3).addParent(bodies.get(0));
@@ -100,9 +98,7 @@ public class Controller {
         bodies.get(2).setOrbit(bodies.get(1), 0.055);
         bodies.get(3).setOrbit(bodies.get(0), 0.048);
         bodies.get(4).setOrbit(bodies.get(0), 0.206);
-        //bodies.get(2).setOrbit(bodies.get(1), 0);
-        //bodies.get(3).setOrbit(bodies.get(0), 0);
-        //bodies.get(4).setOrbit(bodies.get(0), 0.1);
+        //simulation.saveJSON("real.json");
         simPane.widthProperty().addListener((obs, oldVal, newVal) -> centerSystem());
         simPane.heightProperty().addListener((obs, oldVal, newVal) -> centerSystem());
     }
@@ -141,8 +137,9 @@ public class Controller {
     }
 
     public void initUIControls() {
-        simPane.setScaleX(defZoom);
-        simPane.setScaleY(defZoom);
+        simPane.setScaleX(defScale);
+        simPane.setScaleY(defScale);
+
         resetButton.setOnAction(event -> resetSimulation());
         speedReset.setOnAction(event -> {
             speedFactor = 1;
@@ -178,11 +175,18 @@ public class Controller {
     public void resetCam() {
         simPane.setTranslateX(0);
         simPane.setTranslateY(0);
-        simPane.setScaleX(defZoom);
-        simPane.setScaleY(defZoom);
+        simPane.setScaleX(defScale);
+        simPane.setScaleY(defScale);
     }
 
     public void initMouseHandlers() {
+        Rectangle bg = new Rectangle();
+        bg.setWidth(1e14);
+        bg.setHeight(1e14);
+        bg.setLayoutX(-bg.getWidth() / 2);
+        bg.setLayoutY(-bg.getHeight() / 2);
+        bg.setFill(Color.TRANSPARENT);
+        simPane.getChildren().add(0, bg);
         simPane.setOnMousePressed(event -> {
             contextMenu.hide();
             mouseX = event.getSceneX();
@@ -244,7 +248,7 @@ public class Controller {
         List<Body> bodies = simulation.getBodies();
         if (body == null) {
             body = bodies.get(0);
-            selectedBody = bodies.get(0);
+            selectedBody = bodies.get(1);
         }
         double scale = simPane.getScaleX();
         simPane.setTranslateX(-body.x * scale);
@@ -257,7 +261,7 @@ public class Controller {
             public void handle(long now) {
                 posText.setText(Long.toString(speedFactor));
                 realTimeNS = System.nanoTime();
-                for (int i = 0; i < speedFactor/100; i++) {
+                for (int i = 0; i < speedFactor; i++) {
                     physics.step();
                 }
                 graphics.update(orbitDisplayMode);
@@ -267,7 +271,12 @@ public class Controller {
                 if (follow) follow(selectedBody);
                 DecimalFormat df = new DecimalFormat("0.00E0");
                 String selected = (selectedBody != null) ? selectedBody.name : "Nothing";
-                xyText.setText(df.format(x) + " :X"+"\n"+df.format(y) + " :Y" + "\n" + selected + " :Selected" + "\n" + graphics.getDist() + " :Distance");
+                String main = (selectedBody != null && selectedBody.main != null) ? selectedBody.main.name : "Nothing";
+                xyText.setText("X: " + df.format(x) +
+                "\nY: " + df.format(y) + 
+                "\nSelected: " + selected + 
+                "\nDistance: " + df.format(graphics.getDist() / 1_000) + " km" +
+                "\nMain: " + main);
             }
         };
         timer.start();

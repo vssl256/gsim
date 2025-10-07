@@ -1,14 +1,10 @@
 import java.util.List;
 
 public class Physics {
-    private static final double G = 6.6743e-11;
-    public static double getG() { return G; }
-
-    private double dt = 2.5;
-    private final double epsilon = 0.1;
+    private static final double G = Config.getDouble("physics.G");
+    private double dt = Config.getDouble("physics.dt");
 
     private List<Body> bodies;
-
     public Physics(Simulation simulation) {
         this.bodies = simulation.getBodies();
     }
@@ -24,7 +20,7 @@ public class Physics {
                 double dx = other.x - body.x;
                 double dy = other.y - body.y;
                 double r = Math.sqrt(dx*dx + dy*dy);
-                double F = (G * body.mass * other.mass / (r*r + epsilon*epsilon));// * (1 + (0.00000001/r));
+                double F = (G * body.mass * other.mass / (r*r));// * (1 + (0.00000001/r));
                 ax += F * dx / (r * body.mass);
                 ay += F * dy / (r * body.mass);
             }
