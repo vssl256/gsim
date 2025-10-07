@@ -77,12 +77,23 @@ public class Controller {
         simulation.addBody("Moon", 1.471e11+3.636e8, 0, 7.36e22, 1.737e6, "GRAY");
         simulation.addBody("Jupiter", 7.415e11, 0, 1.898e27, 6.991e7, "ORANGE");
         simulation.addBody("Mercury", 4.6e10, 0, 3.301e23, 2.439e6, "DIMGRAY");
+
+        simulation.addBody("Io", 7.415e11+4.217e8, 0, 8.93e22, 1.8216e6, "CORAL");
+        simulation.addBody("Europa", 7.415e11+6.709e8, 0, 4.80e22, 1.5608e6, "WHITESMOKE");
+        simulation.addBody("Ganymede", 7.415e11+1.07e9, 0, 1.48e23, 2.6312e6, "LIGHTGRAY");
+        simulation.addBody("Callisto", 7.415e11+1.883e9, 0, 1.08e23, 2.4103e6, "DARKGRAY");
         List<Body> bodies = simulation.getBodies();
         bodies.get(1).setAtmosphere(new Atmosphere(1e5, 0.2, Color.LIGHTBLUE));
         bodies.get(2).addParent(bodies.get(1));
         bodies.get(1).addParent(bodies.get(0));
         bodies.get(3).addParent(bodies.get(0));
         bodies.get(4).addParent(bodies.get(0));
+        
+        bodies.get(5).addParent(bodies.get(3));
+        bodies.get(6).addParent(bodies.get(3));
+        bodies.get(7).addParent(bodies.get(3));
+        bodies.get(8).addParent(bodies.get(3));
+
         simGroup = new Group();
         simPane.getChildren().add(simGroup);
 
@@ -98,6 +109,11 @@ public class Controller {
         bodies.get(2).setOrbit(bodies.get(1), 0.055);
         bodies.get(3).setOrbit(bodies.get(0), 0.048);
         bodies.get(4).setOrbit(bodies.get(0), 0.206);
+
+        bodies.get(5).setOrbit(bodies.get(3), 0.0041);
+        bodies.get(6).setOrbit(bodies.get(3), 0.0094);
+        bodies.get(7).setOrbit(bodies.get(3), 0.0013);
+        bodies.get(8).setOrbit(bodies.get(3), 0.0074);
         //simulation.saveJSON("real.json");
         simPane.widthProperty().addListener((obs, oldVal, newVal) -> centerSystem());
         simPane.heightProperty().addListener((obs, oldVal, newVal) -> centerSystem());
@@ -260,7 +276,7 @@ public class Controller {
         timer = new AnimationTimer() {
             @Override
             public void handle(long now) {
-                posText.setText(Long.toString(speedFactor));
+                posText.setText(Long.toString(speedFactor)+"x");
                 realTimeNS = System.nanoTime();
                 for (int i = 0; i < speedFactor; i++) {
                     physics.step();
