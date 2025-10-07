@@ -198,8 +198,9 @@ public class Controller {
             for (Body body : bodies) {
                 Body main = body.main;
                 if (main == null) main = bodies.get(0);
-                if (Math.sqrt(Math.pow((body.x-x), 2) + Math.pow((body.y - y), 2))<body.radius*100) {
+                if (Math.sqrt(Math.pow((body.x-x), 2) + Math.pow((body.y - y), 2))<20 / simPane.getScaleX()) {
                     selectedBody = body;
+                    break;
                 }
             }
         });

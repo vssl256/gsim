@@ -14,11 +14,16 @@ public class Graphics {
     private final Group simGroup;
     private final Pane simPane;
     private final Controller controller;
+    private Circle selected;
     public Graphics(Simulation simulation, Group simGroup, Pane simPane, Controller controller) {
         this.simulation = simulation;
         this.simGroup = simGroup;
         this.simPane = simPane;
         this.controller = controller;
+
+        this.selected = new Circle();
+        selected.setOpacity(0.2);
+        simPane.getChildren().add(0, selected);
     }
 
     private double lineWidth = Config.getDouble("graphics.lineWidth");
@@ -45,7 +50,15 @@ public class Graphics {
             bodyShape.setCenterY(body.y);
             if (body == controller.getSelectedBody()) {
                 Body main = body.main;
-                if (main != null) dist = Math.sqrt(Math.pow((body.x-main.x), 2) + Math.pow((body.y - main.y), 2));
+                if (main != null) {
+                    dist = Math.sqrt(Math.pow((body.x-main.x), 2) + Math.pow((body.y - main.y), 2));
+                } 
+                selected.setFill(body.getColor());
+                selected.setLayoutX(body.x);
+                selected.setLayoutY(body.y);
+                selected.setRadius(5 / simPane.getScaleX());
+                selected.setVisible(true);
+                
             }
             Body parent = (body.main != null) ? body.main : bodies.get(0);
             switch (orbitDisplayMode) {
