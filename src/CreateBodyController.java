@@ -96,8 +96,8 @@ public class CreateBodyController {
         simulation.addBody(name, x, y, mass, radius, color);
         Body body = simulation.getBodies().get(simulation.getBodies().size() - 1);
         Body main = simulation.getBodies().get(0);
-        if (comboBox.getValue() != null) body.addParent(mainBody);
-        else body.addParent(main);
+        if (comboBox.getValue() != null) body.setMain(mainBody);
+        else body.setMain(main);
         System.out.println("Orbiting: " + mainBody.name);
         if (hasAtmosphere) body.setAtmosphere(new Atmosphere(atmRadius, atmOpacity, atmColor));
         body.setOrbit(mainBody, Double.parseDouble(eField.getText()));

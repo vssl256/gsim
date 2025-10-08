@@ -35,11 +35,13 @@ public class Controller {
     public long getSpeedFactor() { return speedFactor; }
     @FXML private ToggleGroup group1;
     private int orbitDisplayMode = 1;
+    private boolean relativeTrails = true;
     @FXML private Button speedReset;
     private Group simGroup;
     @FXML private TextField spdField;
     @FXML private Text fpsText;
     @FXML private Text xyText;
+    @FXML private RadioButton relativeRadioButton;
 
     private ContextMenu contextMenu = new ContextMenu();
     private double mouseX, mouseY;
@@ -83,16 +85,17 @@ public class Controller {
         simulation.addBody("Ganymede", 7.415e11+1.07e9, 0, 1.48e23, 2.6312e6, "LIGHTGRAY");
         simulation.addBody("Callisto", 7.415e11+1.883e9, 0, 1.08e23, 2.4103e6, "DARKGRAY");
         List<Body> bodies = simulation.getBodies();
+        simulation.addVessel("Vessel", 1.471e11 + 1e7, 0, 100, bodies.get(1), "RED");
         bodies.get(1).setAtmosphere(new Atmosphere(1e5, 0.2, Color.LIGHTBLUE));
-        bodies.get(2).addParent(bodies.get(1));
-        bodies.get(1).addParent(bodies.get(0));
-        bodies.get(3).addParent(bodies.get(0));
-        bodies.get(4).addParent(bodies.get(0));
+        bodies.get(2).setMain(bodies.get(1));
+        //bodies.get(1).setMain(bodies.get(0));
+        //bodies.get(3).setMain(bodies.get(0));
+        //bodies.get(4).setMain(bodies.get(0));
         
-        bodies.get(5).addParent(bodies.get(3));
-        bodies.get(6).addParent(bodies.get(3));
-        bodies.get(7).addParent(bodies.get(3));
-        bodies.get(8).addParent(bodies.get(3));
+        bodies.get(5).setMain(bodies.get(3));
+        bodies.get(6).setMain(bodies.get(3));
+        bodies.get(7).setMain(bodies.get(3));
+        bodies.get(8).setMain(bodies.get(3));
 
         simGroup = new Group();
         simPane.getChildren().add(simGroup);
@@ -104,9 +107,11 @@ public class Controller {
     }
     public void setupInitialOrbits() {
         List<Body> bodies = simulation.getBodies();
+        List<Vessel> vessels = simulation.getVessels();
         centerSystem();
         bodies.get(1).setOrbit(bodies.get(0), 0.0167);
         bodies.get(2).setOrbit(bodies.get(1), 0.055);
+        vessels.get(0).setOrbit(bodies.get(1), 0.99);
         bodies.get(3).setOrbit(bodies.get(0), 0.048);
         bodies.get(4).setOrbit(bodies.get(0), 0.206);
 
@@ -122,6 +127,7 @@ public class Controller {
     public void initContextMenu() {
         MenuItem itemAdd = new MenuItem("Create new body");
         itemAdd.setOnAction(event -> {
+            contextMenu.hide();
             createBodyWindow();
         });
         contextMenu.getItems().add(itemAdd);
@@ -170,11 +176,15 @@ public class Controller {
             RadioButton selected = (RadioButton) newToggle;
             orbitDisplayMode = "Orbits".equals(selected.getText()) ? 2 : 1;
         });
+        relativeRadioButton.selectedProperty().addListener((obs, oldToggle, newToggle) -> {
+            relativeTrails = (relativeRadioButton.isSelected()) ? true : false;
+        });
         initContextMenu();
         spdField.setOnKeyTyped(event -> {
             if (!spdField.getText().isEmpty()) speedFactor = Integer.valueOf(spdField.getText());
             else speedFactor = 0;
         });
+
     }
 
     public void resetSimulation() {
@@ -278,10 +288,10 @@ public class Controller {
             public void handle(long now) {
                 posText.setText(Long.toString(speedFactor)+"x");
                 realTimeNS = System.nanoTime();
-                for (int i = 0; i < speedFactor; i++) {
+                for (int i = 0; i < speedFactor / 100; i++) {
                     physics.step();
                 }
-                graphics.update(orbitDisplayMode);
+                graphics.update(orbitDisplayMode, relativeTrails);
                 realTimeNS = System.nanoTime() - realTimeNS;
                 double fps = 1e9/realTimeNS;
                 fpsText.setText("FPS: " + (int)fps);

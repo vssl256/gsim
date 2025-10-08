@@ -25,63 +25,120 @@ public class Graphics {
         selected.setOpacity(0.2);
         simPane.getChildren().add(0, selected);
     }
-
     private double lineWidth = Config.getDouble("graphics.lineWidth");
     private double lineOpacity = Config.getDouble("graphics.lineOpacity");
     private int maxPoints = Config.getInt("graphics.maxPoints");
 
     private List<Polyline> trails = new ArrayList<>();
     public List<Polyline> getTrails() { return trails; }
-
     private List<Polyline> orbits = new ArrayList<>();
-    public List<Polyline> getOrbits() { return orbits; }
+
+    private List<Polyline> trailsV = new ArrayList<>();
+    private List<Polyline> orbitsV = new ArrayList<>();
 
     private double dist = 0;
     public double getDist() { return dist; }
 
-    public void update(int orbitDisplayMode) {
+    private boolean oldR = true;
+
+    public void update(int orbitDisplayMode, boolean isRelative) {
         List<Body> bodies = simulation.getBodies();
         List<Circle> bodyShapes = simulation.getBodyShapes();
+
+        List<Vessel> vessels = simulation.getVessels();
+        List<Circle> vesselShapes = simulation.getVesselShapes();
+
+        for (int i = 0; i < vessels.size(); i++) {
+            Vessel vessel = vessels.get(i);
+            Circle vesselShape = vesselShapes.get(i);
+
+            vesselShape.setCenterX(vessel.x);
+            vesselShape.setCenterY(vessel.y);
+            Body parent = vessel.main;
+
+            switch (orbitDisplayMode) {
+                case 1: {
+                    if (oldR != isRelative) {
+                        for (Polyline trail : trailsV) {
+                            trail.getPoints().clear();
+                            trail.setTranslateX(0);
+                            trail.setTranslateY(0);
+                        }
+                        oldR = isRelative;
+                        System.out.println("Switched to " + ((isRelative) ? "relative" : "absolute") + " mode");
+                    }
+                    orbitsV.get(i).setVisible(false);
+                    double scale = simPane.getScaleX();
+                    trailsV.get(i).setStrokeWidth(lineWidth/scale);
+                    double rx = (isRelative) ? vessel.x - parent.x : vessel.x;
+                    double ry = (isRelative) ? vessel.y - parent.y : vessel.y;
+                    trailsV.get(i).getPoints().addAll(rx, ry);
+                    if (trailsV.get(i).getPoints().size() > maxPoints) {
+                        trailsV.get(i).getPoints().remove(0, 2);
+                    }
+                    trailsV.get(i).setTranslateX((isRelative) ? parent.x : 0);
+                    trailsV.get(i).setTranslateY((isRelative) ? parent.y : 0);
+                    break;
+                }
+                case 2: {
+                    trailsV.get(i).getPoints().clear();
+                    orbitsV.get(i).setStrokeWidth(lineWidth/simPane.getScaleX());
+                    drawOrbit(null, vessel, parent, orbitsV.get(i));
+                }
+            }
+            
+        }
 
         for (int i = 0; i < bodies.size(); i++) {
             Circle bodyShape = bodyShapes.get(i);
             Body body = bodies.get(i);
+
             bodyShape.setCenterX(body.x);
             bodyShape.setCenterY(body.y);
+
             if (body == controller.getSelectedBody()) {
                 Body main = body.main;
                 if (main != null) {
-                    dist = Math.sqrt(Math.pow((body.x-main.x), 2) + Math.pow((body.y - main.y), 2));
+                    dist = Math.sqrt(Math.pow((body.x-main.x), 2) + Math.pow((body.y - main.y), 2)) - main.radius;
                 } 
                 selected.setFill(body.getColor());
                 selected.setLayoutX(body.x);
                 selected.setLayoutY(body.y);
                 selected.setRadius(5 / simPane.getScaleX());
                 selected.setVisible(true);
-                
             }
+
             Body parent = (body.main != null) ? body.main : bodies.get(0);
             switch (orbitDisplayMode) {
                 case 1: {
+                    if (oldR != isRelative) {
+                        for (Polyline trail : trails) {
+                            trail.getPoints().clear();
+                            trail.setTranslateX(0);
+                            trail.setTranslateY(0);
+                        }
+                        oldR = isRelative;
+                        System.out.println("Switched to " + ((isRelative) ? "relative" : "absolute") + " mode");
+                    }
                     orbits.get(i).setVisible(false);
                     double scale = simPane.getScaleX();
                     trails.get(i).setStrokeWidth(lineWidth/scale);
-                    double rx = body.x - parent.x;
-                    double ry = body.y - parent.y;
-                    double tx = (body.x - rx) * scale;
-                    double ty = (body.y - ry) * scale;
+                    double rx = (isRelative) ? body.x - parent.x : body.x;
+                    double ry = (isRelative) ? body.y - parent.y : body.y;
+                    //double tx = (body.x - rx) * scale;
+                    //double ty = (body.y - ry) * scale;
                     trails.get(i).getPoints().addAll(rx, ry);
                     if (trails.get(i).getPoints().size() > maxPoints) {
                         trails.get(i).getPoints().remove(0, 2);
                     }
-                    trails.get(i).setTranslateX(parent.x);
-                    trails.get(i).setTranslateY(parent.y);
+                    trails.get(i).setTranslateX((isRelative) ? parent.x : 0);
+                    trails.get(i).setTranslateY((isRelative) ? parent.y : 0);
                     break;
                 }
                 case 2: {
                     trails.get(i).getPoints().clear();
                     orbits.get(i).setStrokeWidth(lineWidth/simPane.getScaleX());
-                    drawOrbit(body, parent, orbits.get(i));
+                    drawOrbit(body, null, parent, orbits.get(i));
                 }
             }
         }
@@ -91,12 +148,19 @@ public class Graphics {
         initBodies();
     }
     public void initBodies() {
-        List<Circle> bodyShapes = simulation.getBodyShapes();
         List<Body> bodies = simulation.getBodies();
+        List<Circle> bodyShapes = simulation.getBodyShapes();
         for (int i = 0; i < bodies.size(); i++) {
             if (!simGroup.getChildren().contains(bodyShapes.get(i))) {
                 if (bodies.get(i).hasAtmosphere) initAtmosphere(bodies.get(i));
                 simGroup.getChildren().add(bodyShapes.get(i));
+            }
+        }
+        List<Vessel> vessels = simulation.getVessels();
+        List<Circle> vesselShapes = simulation.getVesselShapes();
+        for (int i = 0; i < vessels.size(); i++) {
+            if (!simGroup.getChildren().contains(vesselShapes.get(i))) {
+                simGroup.getChildren().add(vesselShapes.get(i));
             }
         }
     }
@@ -118,6 +182,7 @@ public class Graphics {
             Body body = bodies.get(i);
             if (body.initialized) continue;
             body.init();
+            if (body.main == null) body.main = bodies.get(0);
             Color color = body.getColor();
             
             Polyline trail = new Polyline();
@@ -136,9 +201,34 @@ public class Graphics {
 
             simGroup.getChildren().addAll(trail, orbit);
         }
+        List<Vessel> vessels = simulation.getVessels();
+        for (int i = 0; i < vessels.size(); i++) {
+            Vessel vessel = vessels.get(i);
+            if (vessel.initialized) continue;
+            vessel.init();
+            
+            Color color = vessel.getColor();
+
+            Polyline trail = new Polyline();
+            trail.setStroke(color);
+            trail.setStrokeWidth(lineWidth);
+            trail.setOpacity(lineOpacity);
+            trail.setCache(false);
+            trailsV.add(trail);
+
+            Polyline orbit = new Polyline();
+            orbit.setStroke(color);
+            orbit.setStrokeWidth(lineWidth);
+            orbit.setOpacity(lineOpacity);
+            orbit.setCache(false);
+            orbitsV.add(orbit);
+
+            simGroup.getChildren().addAll(trail, orbit);
+        }
     }
 
-    private void drawOrbit(Body body, Body main, Polyline orbitLine) {
+    private void drawOrbit(Body planet, Vessel vessel, Body main, Polyline orbitLine) {
+        var body = (planet == null) ? vessel : planet;
         double rx = body.x - main.x;
         double ry = body.y - main.y;
         double vx = body.vx - main.vx;

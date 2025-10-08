@@ -3,6 +3,7 @@ import java.io.FileWriter;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -15,6 +16,12 @@ public class Simulation {
     private List<Circle> bodyShapes = new ArrayList<>();
     public List<Circle> getBodyShapes() { return bodyShapes; }
 
+    private List<Vessel> vessels = new ArrayList<>();
+    public List<Vessel> getVessels() { return vessels; }
+
+    private List<Circle> vesselShapes = new ArrayList<>();
+    public List<Circle> getVesselShapes() { return vesselShapes; }
+
     private List<Body> loadedBodies = new ArrayList<>();
 
     public void addBody(String name, double x, double y, double mass, double radius, String color) {
@@ -24,18 +31,30 @@ public class Simulation {
         bodyShape.setCache(false);
         bodyShapes.add(bodyShape);
     }
+
     public void addBody(String name, double x, double y, double mass, double radius, String color, Body main) {
         Body body = new Body(name, x, y, mass, radius, color);
-        body.addParent(main);
+        body.setMain(main);
         bodies.add(body);
         Circle bodyShape = new Circle(x, y, radius, body.getColor());
         bodyShape.setCache(false);
         bodyShapes.add(bodyShape);
     }
+
+    public void addVessel(String name, double x, double y, double mass, Body main, String color) {
+        Vessel vessel = new Vessel(name, x, y, mass, main, color);
+        vessels.add(vessel);
+
+        Circle vesselShape = new Circle(x, y, 1e5, vessel.getColor());
+        vesselShape.setCache(false);
+        vesselShapes.add(vesselShape);
+    }
+
     public void clearSimulation() {
         bodies.clear();
         bodyShapes.clear();
     }
+
     public void readJSON(String path) {
         clearSimulation();
         Gson gson = new Gson();
@@ -47,11 +66,13 @@ public class Simulation {
             e.printStackTrace();
         }
     }
+
     public void loadBodies() {
         for (Body body : loadedBodies) {
             addBody(body.name, body.x, body.y, body.mass, body.radius, body.color, body.main);
         }
     }
+
     public void saveJSON(String path) {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(bodies, bodies.getClass());

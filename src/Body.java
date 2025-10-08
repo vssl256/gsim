@@ -1,20 +1,10 @@
 import javafx.scene.paint.Color;
 
-public class Body {
-    public String name;
-    public double x, y;
-    public double vx, vy;
-    public double mass;
+public class Body extends PhysicalObject {
     public double radius;
-    public double x0, y0;
-    public double vx0, vy0;
-    public double e;
-    public String color;
     public Color getColor() { return Color.valueOf(color); }
     public Atmosphere atmosphere;
     public boolean hasAtmosphere = false;
-    public boolean initialized = false;
-    public Body main;
     
     public Body(String name, double x, double y, double mass, double radius, String color) {
         this.name = name;
@@ -28,7 +18,7 @@ public class Body {
     }
     public Body() {}
 
-    public void addParent(Body body) {
+    public void setMain(Body body) {
         this.main = body;
     }
 
